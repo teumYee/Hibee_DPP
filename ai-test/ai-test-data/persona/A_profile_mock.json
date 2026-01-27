@@ -1,0 +1,27 @@
+{
+  "persona": "A",
+  "current_status": "대학생",
+  "life_rhythm": "밤형",
+  "heavy_use_time_slots": [
+    "잠들기 전",
+    "쉬는 시간 / 공백 시간"
+  ],
+  "difficult_moments": [
+    "멈춰야 할 타이밍을 놓침",
+    "피곤할 때 무의식적으로 사용"
+  ],
+  "usage_goals": [
+    "늦은 밤 사용 줄이기",
+    "자꾸 확인하는 습관 줄이기"
+  ],
+  "want_to_improve_categories": [
+    "SNS",
+    "게임"
+  ],
+  "productive_usage": "있음",
+  "change_preference": "아주 작은 변화부터",
+  "interested_features": [
+    "친구와 함께 사용하는 기능",
+    "짧은 체크인 질문"
+  ]
+}

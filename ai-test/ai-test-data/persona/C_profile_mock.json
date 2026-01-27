@@ -1,0 +1,28 @@
+{
+  "persona": "C",
+  "current_status": "취업 준비 중",
+  "life_rhythm": "일정한 패턴 없음",
+  "heavy_use_time_slots": [
+    "쉬는 시간 / 공백 시간",
+    "주말 낮",
+    "주말 밤"
+  ],
+  "difficult_moments": [
+    "시작 전에 잠깐 보다가 길어짐",
+    "피곤할 때 무의식적으로 사용"
+  ],
+  "usage_goals": [
+    "집중 시작을 더 쉽게 만들기",
+    "사용 패턴을 인식하고 싶기"
+  ],
+  "want_to_improve_categories": [
+    "숏폼 영상",
+    "SNS"
+  ],
+  "productive_usage": "있음",
+  "change_preference": "아주 작은 변화부터",
+  "interested_features": [
+    "짧은 체크인 질문",
+    "하루 요약 리포트"
+  ]
+}

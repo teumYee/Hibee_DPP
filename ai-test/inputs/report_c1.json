@@ -1,0 +1,93 @@
+{
+  "user": {
+    "user_id": "2101001",
+    "auth_provider": "google",
+    "google_subject": "google-oauth2|8734210923"
+  },
+  "report_context": {
+    "date": "2026-01-20",
+    "timezone": "Asia/Seoul",
+    "report_type": "daily"
+  },
+  "data": {
+    "today_metrics": {
+      "total_screen_time": {
+        "total_minutes": 164,
+        "display": { "hours": 2, "minutes": 44 }
+      },
+      "top_app_categories": [
+        {
+          "category": "SNS",
+          "minutes": 76,
+          "display": { "hours": 1, "minutes": 16 }
+        },
+        {
+          "category": "VIDEO",
+          "minutes": 49,
+          "display": { "hours": 0, "minutes": 49 }
+        }
+      ],
+      "unlock_count": 57,
+      "late_night_window": { "start": "23:00", "end": "06:00" },
+      "late_night_minutes": 32,
+      "late_night_display": { "hours": 0, "minutes": 32 }
+    },
+    "profile_metrics": {
+      "range_days": 14,
+      "baselines": {
+        "avg_total_minutes": 128,
+        "avg_unlock_count": 45,
+        "avg_late_night_minutes": 11
+      },
+      "typical_top_categories": [
+        { "category": "SNS", "avg_minutes": 52 },
+        { "category": "VIDEO", "avg_minutes": 34 }
+      ],
+      "deltas_vs_avg": {
+        "total_delta_minutes": 36,
+        "unlock_delta": 12,
+        "late_night_delta_minutes": 21
+      }
+    }
+  },
+  "user_inputs": {
+    "checkin_answers": [
+      {
+        "step": 1,
+        "selected_values": ["late_night"],
+        "free_text": "자려고 누웠는데 손이 먼저 폰을 잡았어"
+      },
+      {
+        "step": 2,
+        "selected_values": ["boredom", "habit"],
+        "free_text": "특별히 할 게 없어서 계속 넘기게 됐어"
+      },
+      {
+        "step": 3,
+        "selected_values": ["slightly_regret"],
+        "free_text": "크게 후회되진 않지만 아쉽긴 해"
+      }
+    ]
+  },
+  "output_policy": {
+    "language": "ko",
+    "tone": "warm_coach",
+    "max_title_length": 24,
+    "max_summary_length": 220,
+    "comment_policy": {
+      "max_comments": 3,
+      "max_comment_length": 160
+    },
+    "suggestion_policy": {
+      "max_suggestions": 4,
+      "max_suggestion_title_length": 16,
+      "max_suggestion_description_length": 140,
+      "max_time_cost_minutes": 30
+    },
+    "safety": {
+      "no_diagnosis": true,
+      "no_medical_or_legal_advice": true
+    }
+  },
+  "debug": { "include_rationale": true }
+}

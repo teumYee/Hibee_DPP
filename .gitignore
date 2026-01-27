@@ -1,78 +1,42 @@
 # =========================
-# OS / Editor
-# =========================
-.DS_Store
-Thumbs.db
-
-.vscode/
-.idea/
-*.iml
-*.swp
-*.swo
-
-# =========================
-# Logs
-# =========================
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-*.log
-
-# =========================
-# Node
-# =========================
-node_modules/
-
-# =========================
-# Build
-# =========================
-dist/
-build/
-out/
-
-# =========================
-# React Native - Android
-# =========================
-android/.gradle/
-android/build/
-android/app/build/
-android/local.properties
-
-*.keystore
-*.jks
-
-# =========================
-# React Native - iOS
-# =========================
-ios/Pods/
-ios/build/
-
-# =========================
-# Metro / Cache
-# =========================
-.cache/
-tmp/
-temp/
-
-# =========================
-# TypeScript
-# =========================
-*.tsbuildinfo
-
-# =========================
-# Env / Secrets
+# Environment variables
 # =========================
 .env
 .env.*
-!.env.example
+DPP_AI/.env
+DPP_AI/.env.*
 
 # =========================
-# Crash / Profiling
+# Python
 # =========================
-*.hprof
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+ENV/
+env/
 
 # =========================
-# Misc
+# Node.js
 # =========================
-*.orig
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+.vscode/
+.idea/
+
+# =========================
+# Test outputs
+# =========================
+ai-test/reviews/
+ai-test/out/
+reviews/
+out/

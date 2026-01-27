@@ -1,0 +1,110 @@
+{
+  "user": {
+    "user_id": "2101001",
+    "auth_provider": "google",
+    "google_subject": "google-oauth2|8734210923"
+  },
+  "step": 1,
+  "context": {
+    "date": "2026-01-24",
+    "today_metrics": {
+      "total_screen_time": {
+        "total_minutes": 520,
+        "display": {
+          "hours": 8,
+          "minutes": 40
+        }
+      },
+      "top_app_categories": [
+        {
+          "category": "SNS",
+          "minutes": 220,
+          "display": {
+            "hours": 3,
+            "minutes": 40
+          }
+        },
+        {
+          "category": "GAME",
+          "minutes": 180,
+          "display": {
+            "hours": 3,
+            "minutes": 0
+          }
+        },
+        {
+          "category": "VIDEO",
+          "minutes": 120,
+          "display": {
+            "hours": 2,
+            "minutes": 0
+          }
+        }
+      ],
+      "unlock_count": 35,
+      "late_night_window": {
+        "start": "23:00",
+        "end": "06:00"
+      },
+      "late_night_minutes": 150,
+      "late_night_display": {
+        "hours": 2,
+        "minutes": 30
+      },
+      "session_features": {
+        "session_count": 38,
+        "avg_session_minutes": 13.7,
+        "max_session_minutes": 67,
+        "long_session_present": true,
+        "fragmented_usage_present": true,
+        "high_app_switching_present": true,
+        "dominant_session_pattern": "MIXED",
+        "late_night_session_present": true,
+        "top_switch_pairs": [
+          {
+            "from": "GAME",
+            "to": "SNS",
+            "count": 6
+          },
+          {
+            "from": "SNS",
+            "to": "GAME",
+            "count": 5
+          }
+        ]
+      }
+    },
+    "profile_metrics": {
+      "range_days": 14,
+      "baselines": {
+        "avg_total_minutes": 0,
+        "avg_unlock_count": 0,
+        "avg_late_night_minutes": 0
+      },
+      "typical_top_categories": [],
+      "deltas_vs_avg": {
+        "total_delta_minutes": 0,
+        "unlock_delta": 0,
+        "late_night_delta_minutes": 0
+      }
+    }
+  },
+  "previous_answers": [],
+  "question_policy": {
+    "total_steps": 3,
+    "question_type": "multi_choice",
+    "choices_count": 5,
+    "selection_limits": {
+      "min": 1,
+      "max": 2
+    },
+    "allow_free_text": true,
+    "free_text_max_length": 120,
+    "max_question_length": 80,
+    "max_choice_length": 24
+  },
+  "prompt_ref": {
+    "policy_path": "prompts/checkin/checkin_v1.txt",
+    "template_path": "prompts/checkin/checkin_v1.txt"
+  }
+}

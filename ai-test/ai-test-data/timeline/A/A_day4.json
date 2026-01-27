@@ -1,0 +1,27 @@
+{
+  "question_policy": {
+    "question_count_total": 3,
+    "question_type": "multi_choice",
+    "options_count_min": 4,
+    "options_count_max": 5,
+    "min_select": 1,
+    "max_select": 3,
+    "allow_text": true,
+    "question_max_chars": 80,
+    "answer_text_max_chars": 120
+  },
+  "tone_policy": {
+    "forbidden": [
+      "평가/진단/훈계/명령",
+      "‘줄여야 한다’, ‘문제다’ 등 규정",
+      "의지 문제로 해석",
+      "공부/업무 목적 사용을 소비/문제 사용으로 오인",
+      "‘혼자 통제해야 한다’ 프레임"
+    ],
+    "required": [
+      "판단 없이 돌아보게 하기",
+      "차분하고 공감 중심 톤",
+      "함께 바꿔가는 변화 관점"
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "persona_id": "A",
+  "description": "늦은 밤 SNS·게임 사용이 일상화된 대학생. 혼자서는 패턴 변경이 어렵다고 느껴 함께하는 변화를 기대함.",
+
+  "profile": {
+    "status": "대학생",
+    "life_rhythm": "밤형",
+    "response_style": {
+      "decision": "빠른 선택",
+      "text": "짧거나 생략"
+    }
+  },
+
+  "usage_context_tendencies": {
+    "heavy_use_time_slots": [
+      "잠들기 직전",
+      "쉬는 시간/공백 시간"
+    ],
+    "main_categories": [
+      "SNS",
+      "GAME"
+    ],
+    "late_night_use": "자주 발생",
+    "unconscious_unlock": "잦음"
+  },
+
+  "usage_goals_and_intent": {
+    "goals": [
+      "늦은 밤 사용 줄이기",
+      "자주 확인하는 습관 완화"
+    ],
+    "change_preference": "아주 작은 변화부터",
+    "change_view": "혼자가 아닌 함께하는 변화"
+  },
+
+  "constraints": {
+    "has_productive_usage": true,
+    "productive_usage_note": "전공 공부를 위해 YouTube 사용",
+    "do_not_misclassify_study_as_leisure": true
+  },
+
+  "ai_guidance_notes": [
+    "모든 사용을 문제 행동으로 평가하지 말 것",
+    "공부 목적 사용을 소비/문제 사용으로 오인하지 말 것",
+    "의지 부족 프레임 사용 금지",
+    "판단·진단·훈계 없이 공감 중심 톤 유지",
+    "사용 패턴은 개인의 노력 문제가 아닌 맥락으로 다룰 것"
+  ]
+}

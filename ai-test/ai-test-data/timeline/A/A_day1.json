@@ -1,0 +1,17 @@
+{
+  "date": "2026-01-23",
+  "day_context": {
+    "total_minutes": 520,
+    "total_display": "8시간 40분",
+
+    "unlock_count": 35,
+
+    "late_night_minutes": 150,
+
+    "category_minutes": {
+      "SNS": 220,
+      "GAME": 180,
+      "STUDY_VIDEO": 120
+    }
+  }
+}
