@@ -1,9 +1,4 @@
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 08566d6ed7608b3fc30869a43716f20a3280fc3c
-from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, VARCHAR, TIMESTAMP
 from app.core.database import Base
 from sqlalchemy.orm import relationship
 class Users(Base):
@@ -18,15 +13,10 @@ class Users(Base):
     current_xp = Column(Integer, nullable=True)
     equipped_character = Column(String(100), nullable=True)
     coin = Column(Integer, default=0)
-<<<<<<< HEAD
-
     Night_time = Column(Integer, default=False)
     night_mode_start = Column(String, default="23:00")
     night_mode_end = Column(String, default="07:00")
     
-=======
-    Night_time = Column(Integer, default=False)
->>>>>>> 08566d6ed7608b3fc30869a43716f20a3280fc3c
     # created_at = Column(DateTime, default=datetime.now())
     # updated_at = Column(DateTime, default=datetime.now())
 
@@ -64,5 +54,14 @@ class Users(Base):
     weekly_reports = relationship("WeeklyReports", back_populates="user")
     # 피드백 관련
     # user_feedbacks = relationship("UserFeedback", back_populates="user")
+    # 아이템 보유 기록
+    user_items = relationship("UserItems", back_populates="user")
 
-
+# 사용자 앱 카테고리 설정
+class User_App_Categories(Base):
+    __tablename__ = "user_app_categories"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    package_name = VARCHAR(255),
+    custom_category = Column(String(100))
+    # updated_at = TIMESTAMP DEFAULT CURRENT_TIMESTAMP

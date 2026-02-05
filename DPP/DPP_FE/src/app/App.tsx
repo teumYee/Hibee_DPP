@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 // // Main App component
 // import React from 'react';
 // import { AppProviders } from "./providers/AppProviders";
@@ -23,7 +22,7 @@ import {StatusBar, StyleSheet, useColorScheme, View} from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import UsageStatsTestScreen from './UsageStatsTestScreen';
 
-function App() {
+export default function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
   return (
@@ -48,18 +47,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default App;
-=======
-// Main App component
-import React from 'react';
-import { AppProviders } from "./providers/AppProviders";
-import { AppBootstrap } from "./bootstrap/AppBootstrap";
 
-export default function App() {
-    return (
-        <AppProviders>
-            <AppBootstrap />
-        </AppProviders>
-    );
-}
->>>>>>> 08566d6ed7608b3fc30869a43716f20a3280fc3c

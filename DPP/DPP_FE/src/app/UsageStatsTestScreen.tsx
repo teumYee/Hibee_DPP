@@ -15,16 +15,28 @@ type UsageRow = {
   usageTime: number; // seconds
   firstTimeStamp: number; // ms
   lastTimeStamp: number; // ms
+  category?: number;
+  // 고도화된 지표들
+  appLaunchCount: number;
+  maxContinuousTime: number;
 };
-
+// 타입 추가 (상세 이벤트)
+type DetailedEvent={
+  packageName: string;
+  timestamp: number;
+  type: 'FOREGROUND'|'BACKGROUND'|'STANDBY_CHANGED';
+  bucket?:number;
+}
 const {UsageStatsModule} = NativeModules as {
   UsageStatsModule?: {
     checkPermission: () => Promise<boolean>;
     showSettings: () => void;
     getTodayUsage: () => Promise<UsageRow[]>;
     getUnlockCount: () => Promise<number>;
+    getDetailedEvents: ()=> Promise<DetailedEvent[]>;
   };
 };
+
 
 export default function UsageStatsTestScreen() {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
@@ -69,13 +81,18 @@ export default function UsageStatsTestScreen() {
     const logs = data.map(r => ({
       package_name: r.packageName,
       app_name: r.appName ||'Unknown', 
-      usage_time: Math.round(r.usageTime), // seconds
+      usage_duration: Math.round(r.usageTime),
+
+      date: new Date(r.firstTimeStamp).toISOString(),
+
       start_time: new Date(r.firstTimeStamp).toISOString(),
       end_time: new Date(r.lastTimeStamp).toISOString(),
       unlock_count: count ?? 0, // 개별 앱별 언락 횟수는 알기 어려우므로 0으로 기록
-      category: 'Uncategorized',
-
+      category_id: r.category ?? -1,
       is_night_mode: false,
+      // 추가
+      app_launch_count: r.appLaunchCount,
+      max_continuous_duration: Math.round(r.maxContinuousTime),
     }));
 
     const payload = {
@@ -195,11 +212,16 @@ export default function UsageStatsTestScreen() {
           const minutes = r.usageTime / 60;
           return (
             <View key={r.packageName} style={styles.item}>
-              <Text style={styles.pkg}>{r.packageName}</Text>
-              <Text style={styles.time}>{minutes.toFixed(1)}분</Text>
+              <View style={styles.itemHeader}>
+                <Text style={styles.pkg}>{r.appName || r.packageName}</Text>
+                <Text style={styles.launchTag}>{r.appLaunchCount}회 방문</Text>
             </View>
-          );
-        })}
+            <Text style={styles.time}>
+              총 {minutes.toFixed(1)}분 사용 (최장 {Math.round(r.maxContinuousTime / 60)}분 연속)
+             </Text>
+           </View>
+    );
+  })}
         {hasPermission && rows.length === 0 && (
           <Text style={styles.muted}>
             데이터가 없습니다. (0초 앱은 필터링되어 제외됩니다)
@@ -257,6 +279,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 4,
   },
-
+  itemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  launchTag: {
+    backgroundColor: '#4f46e533',
+    color: '#4f46e5',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
 });
 

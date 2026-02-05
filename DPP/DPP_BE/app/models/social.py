@@ -16,11 +16,7 @@ class Friendships(Base):
     receiver_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     # 상태 ('PENDING', 'ACCEPTED')
-<<<<<<< HEAD
-    # 차단한 경우도 고려해야 하지 않나?
-=======
     # 차단한 경우는 제외. 복잡함. 
->>>>>>> 08566d6ed7608b3fc30869a43716f20a3280fc3c
     status = Column(String(20), default="PENDING", nullable=False)
 
     # 생성 시간

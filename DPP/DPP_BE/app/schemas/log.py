@@ -1,4 +1,3 @@
-from unicodedata import category
 from pydantic import BaseModel
 from datetime import datetime
 from typing import List, Optional
@@ -7,31 +6,38 @@ from typing import List, Optional
 class AppUsageLogBase(BaseModel):
     package_name: str
     app_name: str
-    usage_time: int  
-    start_time: datetime
-    end_time: datetime
+    usage_duration: int
+    date: Optional[datetime] = None
+    start_time: Optional[datetime] = None 
+    end_time: Optional[datetime] = None
     unlock_count: int=0
-    category: Optional[str] = "Uncategorized"
+    app_launch_count: int = 0
+    max_continuous_duration: int = 0
+    category_id: Optional[int] = -1
     is_night_mode: Optional[bool] = False
 
 # 2. 안드로이드 -> 서버 
 class AppUsageLogCreate(BaseModel):
     logs : List[AppUsageLogBase]
-    unlock_count : int
+    unlock_count : int=0
 
 # 3. 서버 -> 클라이언트
 # 상속 기능
 class AppUsageLogResponse(BaseModel):
-    id : int
-    user_id : int
+    id: int
+    user_id: int
     package_name: str     
     app_name: str
-    usage_duration: int   
+    usage_duration: int  
+    date: datetime        
     first_time_stamp: int
     last_time_stamp: int
     unlock_count: int
-    is_night_mode: bool
-    category: Optional[str] = "Uncategorized"
-
+    app_launch_count: int 
+    max_continuous_duration: int
+    is_night_mode: bool=False
+    category_id: Optional[int]=-1
+    category_name: Optional[str] = "기타"
+    
     class Config: 
         from_attributes = True

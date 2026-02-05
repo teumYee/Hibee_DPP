@@ -53,9 +53,7 @@ class Condition(Base):
 
     id = Column(Integer,primary_key=True,index=True)
     instance_id = Column(Integer,ForeignKey("challenge_instances.id"),nullable=False)
-    # 이거 외래키 갖고와야 하는 거 아닌가
     default_target_value = Column(Integer,nullable=False)
-    # ??
     operator = Column(String(10),default=">=")
 
     # 관계 정리
