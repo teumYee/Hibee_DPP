@@ -1,12 +1,7 @@
-
-<<<<<<< HEAD
 # 1. Base 클래스
 # 2. 각 파일에 정의된 모델 클래스 import 
-=======
-# Base 클래스
-# 각 파일에 정의된 모델 클래스 import 
->>>>>>> 08566d6ed7608b3fc30869a43716f20a3280fc3c
-from .user import Users
+
+from .user import Users, User_App_Categories
 from .usage_log import UsageLog
 from .calendar import CalendarEvent, CheckIn, DailyReports, WeeklyReports
 # 캐릭터, 업적 달성
@@ -23,6 +18,7 @@ from .recommendactions import Recommendactions, RecommendedActions, UserFeedback
 
 __all__ = [
     "Users",
+    "User_App_Categories",
     "UserCharacters",
     "UserAchievements",
     "UserChallenge",

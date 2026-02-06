@@ -31,6 +31,8 @@ class UserCharacters(Base):
     user = relationship("Users",back_populates = "user_characters")
     character = relationship("Characters", back_populates="owners")
 
+    equipped_items = relationship("UserItems", back_populates="equipped_to")
+
 class Achievements(Base):
     __tablename__ = "achievements"
 
@@ -57,6 +59,35 @@ class UserAchievements(Base):
     achievement = relationship("Achievements", back_populates="achievers")
 
 
+class Items(Base):
+    __tablename__ = "items"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), nullable=False)
+    description = Column(Text,nullable=True)
+    coin = Column(Integer, nullable=False, default=0)
+    item_type = Column(String(50), nullable=True)  # 예: 'consumable', 'equipment'
+    image_url = Column(Text, nullable=True)
 
+    owners = relationship("UserItems", back_populates="item")
+
+class UserItems(Base):
+    __tablename__ = "user_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    item_id = Column(Integer, ForeignKey("items.id"), nullable=False)
+
+    # 이 아이템을 어떤 '보유 캐릭터'에게 입혔는지 연결
+    user_character_id = Column(Integer, ForeignKey("user_characters.id"), nullable=True)
+
+    purchased_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # 현재 착용 중인지 여부
+    is_equipped = Column(Boolean, default=False)
+
+    user = relationship("Users", back_populates="user_items")
+    item = relationship("Items", back_populates="owners")
+
+    equipped_to = relationship("UserCharacters", back_populates="equipped_items")
 
 

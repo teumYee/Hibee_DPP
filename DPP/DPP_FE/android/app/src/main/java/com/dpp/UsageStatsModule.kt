@@ -55,8 +55,9 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
 
         val usm = reactCtx.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val events = usm.queryEvents(startOfDay, now) ?: return promise.resolve(Arguments.createArray())
-        
+        val pm = reactCtx.packageManager
         val packageUsageMap = mutableMapOf<String, PackageUsage>()
+
         
         while (events.hasNextEvent()) {
             val event = UsageEvents.Event()
@@ -71,6 +72,8 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
                         PackageUsage(packageName, 0L, event.timeStamp, event.timeStamp)
                     }
                     usage.foregroundStartTime = event.timeStamp
+                    // 포그라운드로 올 때마다 카운트 업
+                    usage.launchCount++
                     if (usage.firstTimeStamp == 0L || event.timeStamp < usage.firstTimeStamp) {
                         usage.firstTimeStamp = event.timeStamp
                     }
@@ -80,6 +83,13 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
                     if (usage.foregroundStartTime > 0L) {
                         val duration = event.timeStamp - usage.foregroundStartTime
                         usage.totalTime += duration
+
+                        // 최장 연속 사용 시간 계산
+                        if (duration>usage.maxContinuousTime){
+                            usage.maxContinuousTime = duration
+                        }
+
+
                         usage.foregroundStartTime = -1L
                     }
                     if (event.timeStamp > usage.lastTimeStamp) {
@@ -89,6 +99,8 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
             }
         }
         
+
+
         packageUsageMap.values.forEach { usage ->
             if (usage.foregroundStartTime > 0L) {
                 val duration = now - usage.foregroundStartTime
@@ -105,6 +117,24 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
                     putDouble("usageTime", usage.totalTime.toDouble() / 1000.0)
                     putDouble("firstTimeStamp", usage.firstTimeStamp.toDouble())
                     putDouble("lastTimeStamp", usage.lastTimeStamp.toDouble())
+                    // 새로 계산한 필드들 브릿지로 전달
+                    putInt("appLaunchCount",usage.launchCount)
+                    putDouble("maxContinuousTime",usage.maxContinuousTime.toDouble()/1000.0)
+
+                    // 카테고리 정보 추가 로직
+                    try {
+                        val appInfo = pm.getApplicationInfo(usage.packageName, 0)
+                        val name = pm.getApplicationLabel(appInfo).toString()
+                        putString("appName", if (name.isNotEmpty()) name else usage.packageName) // 이름 없으면 패키지명이라도!
+    
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            putInt("category", appInfo.category)
+                        }
+                    } catch (e: Exception) {
+                        putString("appName", usage.packageName) // 에러 나면 패키지명이라도 노출
+                        putInt("category", -1)
+                    }
+                
                 }
                 result.pushMap(map)
             }
@@ -136,7 +166,11 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
         var totalTime: Long,
         var firstTimeStamp: Long,
         var lastTimeStamp: Long,
-        var foregroundStartTime: Long = -1L
+        var foregroundStartTime: Long = -1L,
+        // 방문 횟수
+        var launchCount: Int = 0,
+        // 최장 연속 사용
+        var maxContinuousTime: Long = 0L
     )
 
     private fun shouldInclude(packageName: String?, totalTimeInForegroundMs: Long): Boolean {
@@ -158,5 +192,51 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
             appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), ctx.packageName)
         }
         return mode == AppOpsManager.MODE_ALLOWED
+    }
+    // UsageEvents 정밀 추출 모듈
+
+    private fun getstartOfDay(): Long {
+    return Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+}
+
+    @ReactMethod
+    fun getDetailedEvents(promise: Promise){
+        val now = System.currentTimeMillis()
+        val startOfDay = getstartOfDay()
+
+        val usm = reactCtx.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val events = usm.queryEvents(startOfDay, now)
+        val result: WritableArray = Arguments.createArray()
+
+        while (events.hasNextEvent()){
+            val event = UsageEvents.Event()
+            if (!events.getNextEvent(event)) break
+
+            val map: WritableMap = Arguments.createMap().apply{
+                putString("packageName", event.packageName)
+                putDouble("timestamp", event.timeStamp.toDouble())
+
+                // 이벤트 타입별 매핑
+                when (event.eventType){
+                    UsageEvents.Event.MOVE_TO_FOREGROUND -> putString("type","FOREGROUND")
+                    UsageEvents.Event.MOVE_TO_BACKGROUND -> putString("type","BACKGROUND")
+                    UsageEvents.Event.STANDBY_BUCKET_CHANGED -> {
+                        putString("type","STANDBY_CHANGED")
+                        // API 28 이상에서 제공하는 대기 버킷 정보 (자주 안 쓰는 앱 판별용)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            putInt("bucket", event.appStandbyBucket)
+                        }
+                    }
+                    else -> return@apply // 다른 이벤트는 무시
+                }
+            }
+            if (map.hasKey("type")) result.pushMap(map)
+        }
+        promise.resolve(result)
     }
 }
