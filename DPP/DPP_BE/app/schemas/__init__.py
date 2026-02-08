@@ -7,7 +7,7 @@ from typing import List
 class AppUsageLogBase(BaseModel):
     package_name:str
     app_name: str
-    usage_time: int  
+    usage_duration: int
     start_time: datetime
     end_time: datetime
     unlock_count: int = 0      # 페이로드 안에 있으니 추가

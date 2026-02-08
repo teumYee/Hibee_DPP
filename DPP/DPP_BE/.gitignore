@@ -11,12 +11,10 @@ __pycache__/
 .env
 
 # VS Code 설정
-<<<<<<< HEAD
+
 .vscode/
 
 # OS 설정 파일
 .DS_Store
 Thumbs.db
-=======
-.vscode/
->>>>>>> 08566d6ed7608b3fc30869a43716f20a3280fc3c
+
