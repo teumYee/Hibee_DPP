@@ -1,0 +1,12 @@
+{
+  "payload": {
+    "snapshot": {
+      "date": "2026-03-05",
+      "total_usage_sec": 16200,
+      "unlock_count": 23,
+      "time_of_day_buckets_sec": {"morning": 3600, "afternoon": 5400, "evening": 4200},
+      "max_continuous_sec": 2700
+    },
+    "user_configs": {"daily_goal_sec": 14400}
+  }
+}

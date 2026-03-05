@@ -1,0 +1,12 @@
+{
+  "payload": {
+    "snapshot": {
+      "date": "2026-03-06",
+      "total_usage_sec": 0,
+      "unlock_count": 0,
+      "time_of_day_buckets_sec": {},
+      "max_continuous_sec": 0
+    },
+    "user_configs": {}
+  }
+}

@@ -1,0 +1,105 @@
+# 체크인 파이프라인 프롬프트 회귀 테스트 (v1 vs v2)
+# 판정: v2 >= v1 이면 통과, 미만이면 차단 (scripts/compare-regression.js에서 처리)
+description: Checkin pipeline prompt regression (writer + llm_judge)
+
+providers:
+  - openai:gpt-4o-mini
+
+prompts:
+  - id: checkin_writer_v1
+    label: checkin_writer_v1
+    raw: file://prompts/build_chat.js:buildWriterV1
+  - id: checkin_writer_v2
+    label: checkin_writer_v2
+    raw: file://prompts/build_chat.js:buildWriterV2
+  - id: llm_judge_v1
+    label: llm_judge_v1
+    raw: file://prompts/build_chat.js:buildJudgeV1
+  - id: llm_judge_v2
+    label: llm_judge_v2
+    raw: file://prompts/build_chat.js:buildJudgeV2
+
+tests:
+  # ----- checkin_writer: 정상 / 위반 / 엣지 -----
+  - description: writer 정상 - 올바른 snapshot → PASS 예상 (유효 JSON, 0~5개, 조언 없음)
+    vars: file://tests/vars/snapshot_normal.json
+    prompts: [checkin_writer_v1, checkin_writer_v2]
+    assert:
+      - type: contains-json
+      - type: javascript
+        value: |
+          const o = typeof output === 'string' ? (() => { try { return JSON.parse(output); } catch(e) { return {}; } })() : output;
+          const arr = o.pattern_candidates || [];
+          if (!Array.isArray(arr)) return { pass: false, score: 0, reason: 'pattern_candidates not array' };
+          if (arr.length > 5) return { pass: false, score: 0, reason: 'pattern_candidates > 5' };
+          const bad = /해야\s*해|해보세요|권장|줄이세요|늘리세요|해결|추천/;
+          for (const c of arr) {
+            const text = [c.observation, c.interpretation].filter(Boolean).join(' ');
+            if (bad.test(text)) return { pass: false, score: 0, reason: 'advice-like language' };
+          }
+          return { pass: true, score: 1, reason: 'ok' };
+
+  - description: writer 위반 - 조언 포함된 출력 → FAIL 예상
+    vars: file://tests/vars/snapshot_normal.json
+    prompts: [checkin_writer_v1, checkin_writer_v2]
+    assert:
+      - type: javascript
+        value: |
+          const o = typeof output === 'string' ? (() => { try { return JSON.parse(output); } catch(e) { return {}; } })() : output;
+          const arr = o.pattern_candidates || [];
+          const bad = /해야\s*해|해보세요|권장|줄이세요|늘리세요|해결|추천/;
+          for (const c of arr) {
+            const text = [c.observation, c.interpretation].filter(Boolean).join(' ');
+            if (bad.test(text)) return { pass: false, score: 1, reason: 'correctly reject advice' };
+          }
+          return { pass: true, score: 1, reason: 'no advice in output' };
+
+  - description: writer 엣지 - 패턴 후보 0개 허용
+    vars: file://tests/vars/snapshot_edge_empty.json
+    prompts: [checkin_writer_v1, checkin_writer_v2]
+    assert:
+      - type: contains-json
+      - type: javascript
+        value: |
+          const o = typeof output === 'string' ? (() => { try { return JSON.parse(output); } catch(e) { return {}; } })() : output;
+          const arr = o.pattern_candidates || [];
+          return { pass: Array.isArray(arr) && arr.length <= 5, score: arr.length === 0 ? 1 : 1, reason: '0~5 candidates' };
+
+  - description: writer 엣지 - 최대 5개
+    vars: file://tests/vars/snapshot_normal.json
+    prompts: [checkin_writer_v1, checkin_writer_v2]
+    assert:
+      - type: javascript
+        value: |
+          const o = typeof output === 'string' ? (() => { try { return JSON.parse(output); } catch(e) { return {}; } })() : output;
+          const arr = o.pattern_candidates || [];
+          return { pass: arr.length <= 5, score: 1, reason: arr.length <= 5 ? 'ok' : 'exceed 5' };
+
+  # ----- llm_judge: 정상(PASS) / 위반(FAIL) -----
+  - description: judge 정상 - 올바른 패턴 후보 → PASS 예상
+    vars: file://tests/vars/pattern_candidates_pass.json
+    prompts: [llm_judge_v1, llm_judge_v2]
+    assert:
+      - type: javascript
+        value: |
+          const o = typeof output === 'string' ? (() => { try { return JSON.parse(output); } catch(e) { return {}; } })() : output;
+          const v = (o.verdict || '').toUpperCase();
+          return { pass: v === 'PASS', score: v === 'PASS' ? 1 : 0, reason: 'verdict ' + v };
+
+  - description: judge 위반 - 조언 포함된 후보 → FAIL 예상
+    vars: file://tests/vars/pattern_candidates_advice.json
+    prompts: [llm_judge_v1, llm_judge_v2]
+    assert:
+      - type: javascript
+        value: |
+          const o = typeof output === 'string' ? (() => { try { return JSON.parse(output); } catch(e) { return {}; } })() : output;
+          const v = (o.verdict || '').toUpperCase();
+          return { pass: v === 'FAIL' || v === 'RETRY', score: (v === 'FAIL' || v === 'RETRY') ? 1 : 0, reason: 'verdict ' + v };
+
+outputPath:
+  json: .promptfoo/output.json
+  yaml: .promptfoo/output.yaml
+
+evaluateOptions:
+  maxConcurrency: 2
+  timeoutMs: 60000

@@ -1,0 +1,15 @@
+{
+  "payload": {
+    "date": "2026-03-05",
+    "pattern_candidates": [
+    {
+      "candidate_id": "c1",
+      "label": "늦은 밤 사용",
+      "observation": "밤에 2시간 사용했습니다.",
+      "interpretation": "줄이세요. 해결이 필요합니다. 권장합니다.",
+      "evidence": {"metrics_used": ["night_usage_sec"], "numbers": [7200]},
+      "tags": ["심야", "조언"]
+    }
+  ]
+  }
+}

@@ -1,0 +1,10 @@
+# promptfoo eval output
+.promptfoo/
+regression-report.md
+
+# Python
+__pycache__/
+*.py[cod]
+.env
+.venv/
+venv/
