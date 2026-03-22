@@ -32,4 +32,18 @@ class UsageLog(Base):
     # 방문 횟수
     app_launch_count = Column(Integer, default=0)
     # 최장 연속 사용 (초)
-    max_continuous_duration = Column(Integer,default=0)
+    max_continuous_duration = Column(Integer, default=0)
+
+
+class Daily_SnapShots(Base):
+    __tablename__ = "daily_snap_shots"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    package_name = Column(String, nullable=True)
+    total_usage_check = Column(Integer, default=0)
+    unlock_count = Column(Integer, default=0)
+    time_of_day_buckets_sec = Column(Integer, default=0)
+    max_continuous_sec = Column(Integer, default=0)
+    app_launch_count = Column(Integer, default=0)
+
+    user = relationship("Users", back_populates="daily_snap_shots")
