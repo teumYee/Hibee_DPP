@@ -5,6 +5,7 @@ uvicorn[standard]
 # 2. 데이터베이스 및 ORM 
 sqlalchemy
 psycopg2-binary
+pgvector
 alembic
 pydantic-settings
 python-dotenv
@@ -18,9 +19,7 @@ python-jose[cryptography]
 python-multipart
 
 # 5. 기타
-<<<<<<< HEAD
+
 requests
 google-auth
-=======
-requests
->>>>>>> 08566d6ed7608b3fc30869a43716f20a3280fc3c
+
