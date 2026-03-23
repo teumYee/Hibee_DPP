@@ -7,7 +7,7 @@ report_judge.py — GPT-4o-mini로 리포트 검수
 import os
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from openai import OpenAI
 
@@ -43,7 +43,7 @@ def run_report_judge(
     snapshot: dict,
     kpt: dict,
     *,
-    model: str | None = None,
+    model: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     리포트 초안을 검수합니다.
