@@ -1,6 +1,6 @@
 """
 report_writer.py — Claude Sonnet으로 데일리 리포트 작성
-입력: snapshot, selected_patterns, kpt [, retrieved_evidence]
+입력: snapshot, user_configs, selected_patterns, kpt [, retrieved_evidence]
 출력: { "report_markdown": "..." }
 retrieved_evidence는 파라미터로 받되 비어 있어도 동작 (나중에 DB 연동 시 사용)
 """
@@ -43,6 +43,7 @@ def _call_claude(
 
 def generate_report(
     snapshot: dict,
+    user_configs: dict,
     selected_patterns: List[Dict[str, Any]],
     kpt: dict,
     *,
@@ -55,6 +56,7 @@ def generate_report(
 
     Args:
         snapshot: 오늘 사용 데이터 스냅샷
+        user_configs: 사용자 온보딩/설정 정보
         selected_patterns: 사용자가 선택한 패턴 리스트
         kpt: KPT 등 추가 컨텍스트
         retrieved_evidence: 검색된 근거 목록. 비어 있거나 None이면 무시 (placeholder)
@@ -70,12 +72,14 @@ def generate_report(
     model = os.getenv("REPORT_WRITER_MODEL_OPUS", FALLBACK_MODEL) if use_opus else os.getenv("REPORT_WRITER_MODEL", DEFAULT_MODEL)
 
     system = """당신은 디지털 웰빙 앱 "돌핀팟"의 데일리 리포트 작성 AI입니다.
-snapshot과 사용자가 선택한 패턴(selected_patterns), KPT를 바탕으로
+ snapshot과 사용자 설정(user_configs), 사용자가 선택한 패턴(selected_patterns), KPT를 바탕으로
 사용자에게 전달할 리포트를 마크다운으로 작성합니다.
-과잉 조언·훈계를 피하고, 사실과 맥락 위주로 서술합니다."""
+과잉 조언·훈계를 피하고, 사실과 맥락 위주로 서술합니다.
+retrieved_evidence가 있으면 해당 근거와 user_configs의 목표/활동 시간/어려움/체크인 시간을 반영해 개인화합니다."""
 
     payload = {
         "snapshot": snapshot,
+        "user_configs": user_configs,
         "selected_patterns": selected_patterns,
         "kpt": kpt,
         "retrieved_evidence": retrieved_evidence,

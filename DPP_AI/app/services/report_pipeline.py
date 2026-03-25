@@ -88,6 +88,7 @@ def run_report_pipeline(
     """
     run_id = run_id or str(uuid.uuid4())
     snapshot = input_data.get("snapshot", {}) if isinstance(input_data, dict) else {}
+    user_configs = input_data.get("user_configs", {}) if isinstance(input_data, dict) else {}
     selected_patterns = input_data.get("selected_patterns", [])
     if not isinstance(selected_patterns, list):
         selected_patterns = []
@@ -112,6 +113,7 @@ def run_report_pipeline(
         try:
             writer_out = generate_report(
                 snapshot,
+                user_configs,
                 selected_patterns,
                 kpt,
                 retrieved_evidence=retrieved_evidence,
@@ -152,7 +154,12 @@ def run_report_pipeline(
             continue
 
         # --- Judge ---
-        judge_result = run_report_judge(report_markdown, snapshot, kpt)
+        judge_result = run_report_judge(
+            report_markdown,
+            snapshot,
+            kpt,
+            retrieved_evidence=retrieved_evidence,
+        )
         judge_results.append(judge_result)
         if log_to_db:
             _log_to_qa_results(

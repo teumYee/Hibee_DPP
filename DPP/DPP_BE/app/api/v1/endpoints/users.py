@@ -40,6 +40,7 @@ async def complete_onboarding(
     config.struggles = data.struggles
     config.night_mode_start = data.night_mode_start
     config.night_mode_end = data.night_mode_end
+    config.checkin_time = data.checkin_time
 
     stats = db.query(User_Stats).filter(User_Stats.user_id==current_user_id).first()
     if not stats:

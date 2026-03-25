@@ -1,19 +1,19 @@
-from sqlalchemy import Column,Integer,String,Text
+from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from app.core.database import Base
-from sqlalchemy.orm import relationship
 
 class OnboardingOptionsMaster(Base):
     __tablename__ = "onboarding_options_master"
 
     id = Column(Integer, primary_key=True, index=True)
     category = Column(String(50))
-    option_text = Column(Text)
+    option_text = Column(JSONB, nullable=True)
 
 class CategoryMaster(Base):
     __tablename__ = "category_master"
-    id = Column(Integer,primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     category = Column(String(50))
-    option_text = Column(Text)
+    option_text = Column(JSONB, nullable=True)
     
 class TitlesMaster(Base):
     __tablename__ = "titles_master"

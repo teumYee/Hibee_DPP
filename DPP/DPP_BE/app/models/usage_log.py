@@ -1,7 +1,8 @@
 # 스마트폰 사용 db
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, BigInteger, BOOLEAN
+from sqlalchemy import Column, Integer, String, DateTime, Date, ForeignKey, BigInteger, BOOLEAN, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import JSONB
 from app.core.database import Base
 
 class UsageLog(Base):
@@ -37,12 +38,14 @@ class UsageLog(Base):
 
 class Daily_SnapShots(Base):
     __tablename__ = "daily_snap_shots"
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     package_name = Column(String, nullable=True)
     total_usage_check = Column(Integer, default=0)
     unlock_count = Column(Integer, default=0)
     time_of_day_buckets_sec = Column(Integer, default=0)
+    time_of_day_buckets_json = Column(JSONB, nullable=True)
     max_continuous_sec = Column(Integer, default=0)
     app_launch_count = Column(Integer, default=0)
 

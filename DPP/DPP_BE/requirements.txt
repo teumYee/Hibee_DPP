@@ -22,4 +22,7 @@ python-multipart
 
 requests
 google-auth
+openai
+anthropic
+pymupdf
 
