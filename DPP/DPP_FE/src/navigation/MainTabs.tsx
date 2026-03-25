@@ -1,3 +1,7 @@
+/*
+ * @deprecated — bottom tab 네비게이션은 MainStack.tsx 단일 스택으로 대체됨.
+ * 참고용으로만 보관합니다.
+
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { MainTabParamList } from "./types";
@@ -23,3 +27,6 @@ export function MainTabs() {
     </Tab.Navigator>
   );
 }
+*/
+
+export {};

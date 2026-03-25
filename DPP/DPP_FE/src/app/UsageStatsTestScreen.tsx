@@ -145,8 +145,8 @@ export default function UsageStatsTestScreen() {
             syncUsageData(data);
           }
         }
-      } catch (e: any) {
-        setError(e?.message ?? String(e));
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : String(e));
       }
     })();
     return () => {
@@ -168,10 +168,10 @@ export default function UsageStatsTestScreen() {
           syncUsageData(data, count);
         }
       }
-    } catch (e: any) {
-      setError(e?.message ?? String(e));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     }
-  }, [fetchUsage, fetchUnlockCount,refreshPermission, syncUsageData]);
+  }, [fetchUsage, fetchUnlockCount, refreshPermission, syncUsageData]);
 
   return (
     <View style={styles.container}>

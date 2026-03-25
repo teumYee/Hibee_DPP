@@ -18,9 +18,5 @@ python-jose[cryptography]
 python-multipart
 
 # 5. 기타
-<<<<<<< HEAD
 requests
 google-auth
-=======
-requests
->>>>>>> 08566d6ed7608b3fc30869a43716f20a3280fc3c

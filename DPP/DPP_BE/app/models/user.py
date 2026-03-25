@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, VARCHAR, TIMESTAMP
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, VARCHAR, TIMESTAMP, JSON
 from app.core.database import Base
 from sqlalchemy.orm import relationship
 class Users(Base):
@@ -13,7 +13,7 @@ class Users(Base):
     current_xp = Column(Integer, nullable=True)
     equipped_character = Column(String(100), nullable=True)
     coin = Column(Integer, default=0)
-    Night_time = Column(Integer, default=False)
+    Night_time = Column(Integer, default=0)
     night_mode_start = Column(String, default="23:00")
     night_mode_end = Column(String, default="07:00")
     
@@ -56,6 +56,27 @@ class Users(Base):
     # user_feedbacks = relationship("UserFeedback", back_populates="user")
     # 아이템 보유 기록
     user_items = relationship("UserItems", back_populates="user")
+
+    user_config = relationship("UserConfigs", back_populates="user", uselist=False)
+
+
+class UserConfigs(Base):
+    """온보딩·목표 등 사용자별 설정 (user_id당 1행)"""
+    __tablename__ = "user_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False, index=True)
+
+    goals = Column(JSON, nullable=True)
+    active_times = Column(JSON, nullable=True)
+    night_mode_start = Column(String(255), nullable=True)
+    night_mode_end = Column(String(255), nullable=True)
+    struggles = Column(JSON, nullable=True)
+    focus_categories = Column(JSON, nullable=True)
+    checkin_time = Column(String(255), nullable=True)
+
+    user = relationship("Users", back_populates="user_config")
+
 
 # 사용자 앱 카테고리 설정
 class User_App_Categories(Base):

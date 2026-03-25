@@ -4,6 +4,7 @@ buildscript {
         minSdkVersion = 24
         compileSdkVersion = 36
         targetSdkVersion = 36
+        // NDK 27 + Windows에서 codegen(.so) 링크 시 libc++ 심볼 누락 이슈가 있어 26으로 고정
         ndkVersion = "27.1.12297006"
         kotlinVersion = "2.1.20"
     }

@@ -1,7 +1,7 @@
 # 1. Base 클래스
 # 2. 각 파일에 정의된 모델 클래스 import 
 
-from .user import Users, User_App_Categories
+from .user import Users, User_App_Categories, UserConfigs
 from .usage_log import UsageLog
 from .calendar import CalendarEvent, CheckIn, DailyReports, WeeklyReports
 # 캐릭터, 업적 달성
@@ -18,6 +18,7 @@ from .recommendactions import Recommendactions, RecommendedActions, UserFeedback
 
 __all__ = [
     "Users",
+    "UserConfigs",
     "User_App_Categories",
     "UserCharacters",
     "UserAchievements",

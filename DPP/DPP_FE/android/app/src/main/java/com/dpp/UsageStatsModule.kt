@@ -1,10 +1,11 @@
-package com.dpp
+package com.dolphinpod
 
 import android.app.AppOpsManager
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ResolveInfo
 import android.os.Build
 import android.provider.Settings
 import com.facebook.react.bridge.Arguments
@@ -32,6 +33,39 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         reactCtx.startActivity(intent)
+    }
+
+    /**
+     * 런처에 등록된 설치 앱 목록 (패키지명 + 표시 이름)
+     */
+    @ReactMethod
+    fun getInstalledApps(promise: Promise) {
+        try {
+            val pm = reactCtx.packageManager
+            val launchIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+            val apps: List<ResolveInfo> = pm.queryIntentActivities(launchIntent, 0)
+            val result: WritableArray = Arguments.createArray()
+            val seen = mutableSetOf<String>()
+            for (ri in apps) {
+                val pkg = ri.activityInfo?.packageName ?: continue
+                if (!seen.add(pkg)) continue
+                val label = try {
+                    pm.getApplicationLabel(ri.activityInfo.applicationInfo).toString()
+                } catch (_: Exception) {
+                    pkg
+                }
+                val map: WritableMap = Arguments.createMap().apply {
+                    putString("packageName", pkg)
+                    putString("appName", label)
+                }
+                result.pushMap(map)
+            }
+            promise.resolve(result)
+        } catch (e: Exception) {
+            promise.reject("INSTALLED_APPS", e.message, e)
+        }
     }
 
     /**

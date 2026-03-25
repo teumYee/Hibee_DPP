@@ -1,8 +1,8 @@
 
 from app.api.v1.endpoints.log import router as log_router
 from app.api.v1.endpoints.auth import router as auth_router
-from app.api.v1.endpoints.log import router as log_router
 from app.api.v1.endpoints.dashboard import router as dashboard_router
+from app.api.v1.endpoints.users import router as users_router
 
 from pydoc import describe
 from fastapi import FastAPI, Depends, HTTPException
@@ -49,6 +49,7 @@ app.add_middleware(
 app.include_router(log_router, prefix="/api/v1/logs",tags=["logs"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(dashboard_router,prefix="/api/v1/dashboard", tags=["dashboard"])
+app.include_router(users_router, prefix="/api/v1/users", tags=["users"])
 
 
 @app.get("/")
