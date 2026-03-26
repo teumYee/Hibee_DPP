@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from datetime import date, timedelta
 
 from app.core.database import get_db
-from app.models.user import Users, UserConfigs
+from app.models.user import Users, UserConfigs, User_Stats
 from app.models.calendar import CheckIn
 from app.schemas.users import NicknameRequest, OnboardingRequest
 
@@ -49,6 +49,16 @@ def save_onboarding(body: OnboardingRequest, db: Session = Depends(get_db)):
     row.struggles = body.struggles
     row.focus_categories = body.focus_categories
     row.checkin_time = None
+
+    stats = db.query(User_Stats).filter(User_Stats.user_id == body.user_id).first()
+    if stats is None:
+        stats = User_Stats(
+            user_id=body.user_id,
+            coin=0,
+            total_checkin_count=0,
+            continuous_days=0,
+        )
+        db.add(stats)
 
     db.commit()
     db.refresh(row)

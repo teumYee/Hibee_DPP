@@ -5,6 +5,7 @@ uvicorn[standard]
 # 2. 데이터베이스 및 ORM 
 sqlalchemy
 psycopg2-binary
+pgvector
 alembic
 pydantic-settings
 python-dotenv

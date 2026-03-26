@@ -7,7 +7,6 @@ from app.api.v1.endpoints.users import router as users_router
 from pydoc import describe
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.database import engine, Base, get_db
 from app import models, schemas
 from sqlalchemy.orm import Session
 from app.models.usage_log import UsageLog
@@ -26,8 +25,7 @@ from sqlalchemy.orm import Session
 #  uvicorn main:app --host 0.0.0.0 --port 8000 --reload : 외부 접속 허용
 
 # uvicorn app.main:app --reload
-
-Base.metadata.create_all(bind=engine)
+# 스키마는 Alembic으로 관리 (alembic upgrade head)
 
 app=FastAPI(
     title="DPP API",
