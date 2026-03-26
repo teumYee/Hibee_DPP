@@ -2,7 +2,7 @@
 import { useAuthStore } from "../../store/auth.store";
 
 /** 나중에 react-native-config 등으로 치환 */
-const BASE_URL = "http://10.0.2.2:8000";
+const BASE_URL = "http://192.168.1.104:8000";
 
 export class HttpError extends Error {
   constructor(

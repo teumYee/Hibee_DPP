@@ -18,8 +18,10 @@ export const ENDPOINTS = {
   userLevel: "/api/v1/users/me/level",
   /** TODO: BE 미구현 */
   userAchievements: "/api/v1/users/me/achievements",
-  /** TODO: BE 미구현 */
+  /** 구현됨: POST /api/v1/users/nickname */
   usersNickname: "/api/v1/users/nickname",
+  /** 구현됨: POST /api/v1/users/onboarding */
+  usersOnboarding: "/api/v1/users/onboarding",
   /** TODO: BE 미구현 */
   usersGoalsPatterns: "/api/v1/users/goals/patterns",
   /** TODO: BE 미구현 */
@@ -46,6 +48,8 @@ export const ENDPOINTS = {
   usersGoalsFocusCategory: "/api/v1/users/goals/focus_category",
   /** TODO: BE 미구현 */
   usersCategories: "/api/v1/users/categories",
+  /** 구현됨: PUT /api/v1/users/category-setup */
+  usersCategorySetup: "/api/v1/users/category-setup",
   /** TODO: BE 미구현 */
   appsInstalled: "/api/v1/apps/installed",
   /** TODO: BE 미구현 */

@@ -18,6 +18,7 @@ class AppUsageLogBase(BaseModel):
 
 # 2. 안드로이드 -> 서버 
 class AppUsageLogCreate(BaseModel):
+    user_id: int
     logs : List[AppUsageLogBase]
     unlock_count : int=0
 

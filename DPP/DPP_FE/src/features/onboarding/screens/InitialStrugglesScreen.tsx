@@ -9,8 +9,8 @@ import {
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { OnboardingStackParamList } from "../../../navigation/types";
+import { useAuthStore } from "../../../store/auth.store";
 import { OnboardingStepLayout } from "../components/OnboardingStepLayout";
-import { postGoalsStruggles } from "../../../services/api/main.api";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "InitialStruggles">;
 
@@ -51,7 +51,10 @@ const OPTIONS: StruggleOption[] = [
 ];
 
 export function InitialStrugglesScreen({ navigation }: Props) {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const setOnboardingData = useAuthStore((s) => s.setOnboardingData);
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(useAuthStore.getState().onboardingData.struggles),
+  );
   const [loading, setLoading] = useState(false);
 
   const toggle = useCallback((id: string) => {
@@ -69,17 +72,14 @@ export function InitialStrugglesScreen({ navigation }: Props) {
     if (!canNext) return;
     setLoading(true);
     try {
-      await postGoalsStruggles({ struggle_ids: Array.from(selected) });
+      await setOnboardingData({ struggles: Array.from(selected) });
       navigation.navigate("InitialCategories", {});
-    } catch (e: unknown) {
-      console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [canNext, navigation, selected]);
+  }, [canNext, navigation, selected, setOnboardingData]);
 
   const onSkip = useCallback(() => {
-    // TODO: 테스트용 - BE 완성 후 제거
     navigation.navigate("InitialCategories", {});
   }, [navigation]);
 
@@ -101,7 +101,7 @@ export function InitialStrugglesScreen({ navigation }: Props) {
             !canNext && styles.primaryBtnDisabled,
             pressed && canNext && styles.primaryBtnPressed,
           ]}
-          onPress={onNext}
+          onPress={() => void onNext()}
           disabled={!canNext}
           accessibilityRole="button"
           accessibilityLabel="다음으로"

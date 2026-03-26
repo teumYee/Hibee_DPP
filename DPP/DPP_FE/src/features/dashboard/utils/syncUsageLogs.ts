@@ -1,6 +1,7 @@
 import { NativeModules } from "react-native";
 import type { PostUsageLogsRequest, UsageLogItem } from "../../../services/api/dashboard.api";
 import { postUsageLogs } from "../../../services/api/dashboard.api";
+import { useAuthStore } from "../../../store/auth.store";
 
 type UsageRow = {
   packageName: string;
@@ -26,8 +27,9 @@ function getModule(): UsageStatsModuleType | undefined {
   return UsageStatsModule;
 }
 
-function rowsToLogs(rows: UsageRow[]): UsageLogItem[] {
+function rowsToLogs(rows: UsageRow[], userId: number): UsageLogItem[] {
   return rows.map((r) => ({
+    user_id: userId,
     package_name: r.packageName,
     app_name: r.appName || "Unknown",
     usage_duration: Math.round(r.usageTime),
@@ -44,8 +46,12 @@ function rowsToLogs(rows: UsageRow[]): UsageLogItem[] {
 
 /** 화면 진입 시 사용 통계를 서버로 전송 (POST /usage/logs) */
 export async function syncUsageLogsOnDashboardEnter(): Promise<void> {
+  const userId = useAuthStore.getState().userId;
+  if (userId == null) {
+    return;
+  }
   const mod = getModule();
-  const empty: PostUsageLogsRequest = { logs: [], unlock_count: 0 };
+  const empty: PostUsageLogsRequest = { user_id: userId, logs: [], unlock_count: 0 };
   if (!mod) {
     await postUsageLogs(empty);
     return;
@@ -62,7 +68,8 @@ export async function syncUsageLogsOnDashboardEnter(): Promise<void> {
     ]);
     const rows = Array.isArray(raw) ? raw : [];
     const payload: PostUsageLogsRequest = {
-      logs: rowsToLogs(rows),
+      user_id: userId,
+      logs: rowsToLogs(rows, userId),
       unlock_count: typeof unlockCount === "number" ? unlockCount : 0,
     };
     await postUsageLogs(payload);

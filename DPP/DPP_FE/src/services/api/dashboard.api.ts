@@ -3,6 +3,7 @@ import { get, post, put } from "./client";
 import { ENDPOINTS } from "./endpoints";
 
 export type UsageLogItem = {
+  user_id: number;
   package_name: string;
   app_name: string;
   usage_duration: number;
@@ -17,8 +18,29 @@ export type UsageLogItem = {
 };
 
 export type PostUsageLogsRequest = {
+  user_id: number;
   logs: UsageLogItem[];
   unlock_count: number;
+};
+
+export type InstalledApp = {
+  packageName: string;
+  appName: string;
+  categoryId: number;
+  categoryName: string;
+  iconBase64?: string;
+};
+
+export type CategorySetupItem = {
+  package_name: string;
+  app_name: string;
+  category_id: number;
+  category_name: string;
+};
+
+export type PutUserCategorySetupRequest = {
+  user_id: number;
+  categories: CategorySetupItem[];
 };
 
 export type FrequentAppItem = {
@@ -101,4 +123,10 @@ export async function putUserCategories(
   body: PutUserCategoriesRequest,
 ): Promise<void> {
   await put<void>(ENDPOINTS.usersCategories, body);
+}
+
+export async function putUserCategorySetup(
+  body: PutUserCategorySetupRequest,
+): Promise<void> {
+  await put<void>(ENDPOINTS.usersCategorySetup, body);
 }

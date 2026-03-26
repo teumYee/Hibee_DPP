@@ -1,5 +1,3 @@
-from typing import Any
-
 from pydantic import BaseModel, Field
 
 
@@ -10,9 +8,9 @@ class NicknameRequest(BaseModel):
 
 class OnboardingRequest(BaseModel):
     user_id: int
-    goals: list[Any] = Field(default_factory=list)
-    active_times: list[Any] = Field(default_factory=list)
+    goals: list[str] = Field(default_factory=list)
+    active_times: list[str] = Field(default_factory=list)
     night_mode_start: str
     night_mode_end: str
-    struggles: list[Any] = Field(default_factory=list)
-    focus_categories: list[Any] = Field(default_factory=list)
+    struggles: list[str] = Field(default_factory=list)
+    focus_categories: list[str] = Field(default_factory=list)

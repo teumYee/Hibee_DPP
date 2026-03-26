@@ -2,6 +2,7 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   PanResponder,
   Pressable,
@@ -18,8 +19,26 @@ import type {
   MainStackParamList,
   OnboardingStackParamList,
 } from "../../../navigation/types";
+import {
+  buildOnboardingPayload,
+  postOnboarding,
+} from "../../../services/api/main.api";
+import { type OnboardingDraft, useAuthStore } from "../../../store/auth.store";
 import { OnboardingStepLayout } from "../components/OnboardingStepLayout";
-import { postNightTimeSettings } from "../../../services/api/main.api";
+
+function initialNightHours(draft: OnboardingDraft): { start: number; end: number } {
+  const sh = /^(\d{1,2}):00$/.exec(draft.night_mode_start.trim());
+  const eh = /^(\d{1,2}):00$/.exec(draft.night_mode_end.trim());
+  const parse = (m: RegExpExecArray | null): number | null => {
+    if (!m) return null;
+    const n = Number(m[1]);
+    if (!Number.isInteger(n) || n < 0 || n > 23) return null;
+    return n;
+  };
+  const start = parse(sh) ?? 22;
+  const end = parse(eh) ?? 6;
+  return { start, end };
+}
 
 type Props =
   | NativeStackScreenProps<OnboardingStackParamList, "InitialNightTime">
@@ -76,8 +95,13 @@ type DragHandle = "start" | "end";
 
 export function InitialNightTimeScreen({ navigation, route }: Props) {
   const isEdit = route.params?.isEditMode === true;
-  const [startHour, setStartHour] = useState(22);
-  const [endHour, setEndHour] = useState(6);
+  const setOnboardingData = useAuthStore((s) => s.setOnboardingData);
+  const [startHour, setStartHour] = useState(() =>
+    initialNightHours(useAuthStore.getState().onboardingData).start,
+  );
+  const [endHour, setEndHour] = useState(() =>
+    initialNightHours(useAuthStore.getState().onboardingData).end,
+  );
   const [loading, setLoading] = useState(false);
 
   const size = Math.min(Dimensions.get("window").width - 48, 300);
@@ -164,11 +188,19 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
   const onNext = useCallback(async () => {
     setLoading(true);
     try {
-      await postNightTimeSettings({
-        start_time: formatHour(startHour),
-        end_time: formatHour(endHour),
+      await setOnboardingData({
+        night_mode_start: formatHour(startHour),
+        night_mode_end: formatHour(endHour),
       });
       if (isEdit) {
+        const uid = useAuthStore.getState().userId;
+        if (uid == null) {
+          Alert.alert("오류", "로그인 정보가 없어요.");
+          return;
+        }
+        await postOnboarding(
+          buildOnboardingPayload(uid, useAuthStore.getState().onboardingData),
+        );
         navigation.goBack();
       } else {
         (
@@ -176,14 +208,14 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
         ).navigate("InitialStruggles");
       }
     } catch (e: unknown) {
-      console.error(e);
+      const msg = e instanceof Error ? e.message : "저장에 실패했어요";
+      Alert.alert("오류", msg);
     } finally {
       setLoading(false);
     }
-  }, [endHour, isEdit, navigation, startHour]);
+  }, [endHour, isEdit, navigation, setOnboardingData, startHour]);
 
   const onSkip = useCallback(() => {
-    // TODO: 테스트용 - BE 완성 후 제거
     (
       navigation as NativeStackNavigationProp<OnboardingStackParamList>
     ).navigate("InitialStruggles");
@@ -210,7 +242,7 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
             loading && styles.primaryBtnDisabled,
             pressed && !loading && styles.primaryBtnPressed,
           ]}
-          onPress={onNext}
+          onPress={() => void onNext()}
           disabled={loading}
           accessibilityRole="button"
           accessibilityLabel={isEdit ? "저장하기" : "완료하기"}

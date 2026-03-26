@@ -2,6 +2,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,8 +17,12 @@ import type {
   MainStackParamList,
   OnboardingStackParamList,
 } from "../../../navigation/types";
+import {
+  buildOnboardingPayload,
+  postOnboarding,
+} from "../../../services/api/main.api";
+import { useAuthStore } from "../../../store/auth.store";
 import { OnboardingStepLayout } from "../components/OnboardingStepLayout";
-import { postGoalsPatterns } from "../../../services/api/main.api";
 
 type Props =
   | NativeStackScreenProps<OnboardingStackParamList, "InitialGoals">
@@ -62,7 +67,10 @@ const OPTIONS: GoalOption[] = [
 
 export function InitialGoalsScreen({ navigation, route }: Props) {
   const isEdit = route.params?.isEditMode === true;
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const setOnboardingData = useAuthStore((s) => s.setOnboardingData);
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(useAuthStore.getState().onboardingData.goals),
+  );
   const [loading, setLoading] = useState(false);
 
   const toggle = useCallback((id: string) => {
@@ -80,8 +88,16 @@ export function InitialGoalsScreen({ navigation, route }: Props) {
     if (!canNext) return;
     setLoading(true);
     try {
-      await postGoalsPatterns({ pattern_ids: Array.from(selected) });
+      await setOnboardingData({ goals: Array.from(selected) });
       if (isEdit) {
+        const uid = useAuthStore.getState().userId;
+        if (uid == null) {
+          Alert.alert("오류", "로그인 정보가 없어요.");
+          return;
+        }
+        await postOnboarding(
+          buildOnboardingPayload(uid, useAuthStore.getState().onboardingData),
+        );
         navigation.goBack();
       } else {
         (
@@ -89,14 +105,14 @@ export function InitialGoalsScreen({ navigation, route }: Props) {
         ).navigate("InitialActiveTime", {});
       }
     } catch (e: unknown) {
-      console.error(e);
+      const msg = e instanceof Error ? e.message : "저장에 실패했어요";
+      Alert.alert("오류", msg);
     } finally {
       setLoading(false);
     }
-  }, [canNext, isEdit, navigation, selected]);
+  }, [canNext, isEdit, navigation, selected, setOnboardingData]);
 
   const onSkip = useCallback(() => {
-    // TODO: 테스트용 - BE 완성 후 제거
     (
       navigation as NativeStackNavigationProp<OnboardingStackParamList>
     ).navigate("InitialActiveTime", {});
@@ -123,7 +139,7 @@ export function InitialGoalsScreen({ navigation, route }: Props) {
             !canNext && styles.primaryBtnDisabled,
             pressed && canNext && styles.primaryBtnPressed,
           ]}
-          onPress={onNext}
+          onPress={() => void onNext()}
           disabled={!canNext}
           accessibilityRole="button"
           accessibilityLabel={isEdit ? "저장하기" : "다음으로"}

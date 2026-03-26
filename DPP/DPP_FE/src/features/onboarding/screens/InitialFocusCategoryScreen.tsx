@@ -2,6 +2,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,11 +12,16 @@ import type {
   NativeStackNavigationProp,
   NativeStackScreenProps,
 } from "@react-navigation/native-stack";
-import type { OnboardingStackParamList } from "../../../navigation/types";
-import type { RootStackParamList } from "../../../navigation/types";
-import { OnboardingStepLayout } from "../components/OnboardingStepLayout";
+import type {
+  OnboardingStackParamList,
+  RootStackParamList,
+} from "../../../navigation/types";
+import {
+  buildOnboardingPayload,
+  postOnboarding,
+} from "../../../services/api/main.api";
 import { useAuthStore } from "../../../store/auth.store";
-import { postGoalsFocusCategory } from "../../../services/api/main.api";
+import { OnboardingStepLayout } from "../components/OnboardingStepLayout";
 
 type Props = NativeStackScreenProps<
   OnboardingStackParamList,
@@ -29,7 +35,10 @@ const SKIP = "#6C7A89";
 export function InitialFocusCategoryScreen({ navigation, route }: Props) {
   const { categories } = route.params;
   const setOnboardingDone = useAuthStore((s) => s.setOnboardingDone);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const setOnboardingData = useAuthStore((s) => s.setOnboardingData);
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(useAuthStore.getState().onboardingData.focus_categories),
+  );
   const [loading, setLoading] = useState(false);
 
   const toggle = useCallback((id: string) => {
@@ -46,33 +55,54 @@ export function InitialFocusCategoryScreen({ navigation, route }: Props) {
     [categories.length, selected, loading],
   );
 
-  const onFinish = useCallback(async () => {
-    if (!canNext) return;
-    setLoading(true);
-    try {
-      await postGoalsFocusCategory({
-        category_ids: Array.from(selected),
-      });
-      await setOnboardingDone(true);
-      const parent = navigation.getParent<
-        NativeStackNavigationProp<RootStackParamList>
-      >();
-      parent?.navigate("Main", { screen: "Home" });
-    } catch (e: unknown) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }, [canNext, navigation, selected, setOnboardingDone]);
-
-  const onSkip = useCallback(async () => {
-    // TODO: 테스트용 - BE 완성 후 제거
-    await setOnboardingDone(true);
+  const goMainHome = useCallback(() => {
     const parent = navigation.getParent<
       NativeStackNavigationProp<RootStackParamList>
     >();
     parent?.navigate("Main", { screen: "Home" });
-  }, [navigation, setOnboardingDone]);
+  }, [navigation]);
+
+  const submitAndFinish = useCallback(
+    async (focusIds: string[]) => {
+      const uid = useAuthStore.getState().userId;
+      if (uid == null) {
+        Alert.alert("오류", "로그인 정보가 없어요.");
+        return;
+      }
+      await setOnboardingData({ focus_categories: focusIds });
+      await postOnboarding(
+        buildOnboardingPayload(uid, useAuthStore.getState().onboardingData),
+      );
+      await setOnboardingDone(true);
+      goMainHome();
+    },
+    [goMainHome, setOnboardingData, setOnboardingDone],
+  );
+
+  const onFinish = useCallback(async () => {
+    if (!canNext) return;
+    setLoading(true);
+    try {
+      await submitAndFinish(Array.from(selected));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "저장에 실패했어요";
+      Alert.alert("오류", msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [canNext, selected, submitAndFinish]);
+
+  const onSkip = useCallback(async () => {
+    setLoading(true);
+    try {
+      await submitAndFinish([]);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "저장에 실패했어요";
+      Alert.alert("오류", msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [submitAndFinish]);
 
   return (
     <OnboardingStepLayout
@@ -92,7 +122,7 @@ export function InitialFocusCategoryScreen({ navigation, route }: Props) {
             !canNext && styles.primaryBtnDisabled,
             pressed && canNext && styles.primaryBtnPressed,
           ]}
-          onPress={onFinish}
+          onPress={() => void onFinish()}
           disabled={!canNext}
           accessibilityRole="button"
           accessibilityLabel="Pod 입장하기"

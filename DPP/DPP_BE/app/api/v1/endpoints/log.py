@@ -17,8 +17,7 @@ def upload_logs(
     log_data: AppUsageLogCreate,
     db: Session = Depends(get_db)
 ):
-    # 프론트 구현 시, 로그인 유저의 실제 ID로 대체 필요
-    current_user_id=1  # 임시로 사용자 ID를 1로 설정
+    current_user_id = log_data.user_id
     user = db.query(Users).filter(Users.id == current_user_id).first()
 
     # 유저가 없는 경우 예외 처리

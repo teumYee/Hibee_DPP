@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { OnboardingStackParamList } from "../../../navigation/types";
 import { postNickname } from "../../../services/api/main.api";
+import { useAuthStore } from "../../../store/auth.store";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "Nickname">;
 
@@ -30,6 +31,7 @@ const SUGGESTIONS = [
 ] as const;
 
 export function NicknameScreen({ navigation }: Props) {
+  const userId = useAuthStore((s) => s.userId);
   const [value, setValue] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -45,10 +47,13 @@ export function NicknameScreen({ navigation }: Props) {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      await postNickname({ nickname: trimmed });
+      if (userId == null) {
+        console.warn("NicknameScreen: userId 없음");
+      } else {
+        await postNickname({ user_id: userId, nickname: trimmed });
+      }
     } catch (e: unknown) {
       console.warn(e);
-      // TODO: BE /api/v1/users/nickname 구현 후 에러 처리 복구
     } finally {
       navigation.navigate("InitialGoals", {});
       setSubmitting(false);

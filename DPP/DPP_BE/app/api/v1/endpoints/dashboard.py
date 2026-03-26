@@ -21,58 +21,89 @@ def get_dashboard_summary(user_id: int, db: Session = Depends(get_db)):
     today_start = datetime.combine(date.today(), datetime.min.time())
     next_day_start = today_start + timedelta(days=1)
     
-    # 1. 상단 카드 지표 (총 시간, 총 언락)
+    # 1) summary — 오늘 전체 사용시간/언락 합산
     stats = db.query(
-        func.max(UsageLog.usage_duration).label("total_time"),
-        func.max(UsageLog.unlock_count).label("total_unlocks")
+        func.coalesce(func.sum(UsageLog.usage_duration), 0).label("total_time_seconds"),
+        func.coalesce(func.sum(UsageLog.unlock_count), 0).label("total_unlocks"),
     ).filter(
-        UsageLog.user_id == user_id, 
+        UsageLog.user_id == user_id,
         UsageLog.date >= today_start,
-        UsageLog.date < next_day_start
+        UsageLog.date < next_day_start,
     ).first()
 
-    # 2. 가장 자주 들른 곳 & 상위 3개 앱
-    #  app_launch_count 필드를 합산하여 순위를 매김.
-    app_ranks = db.query(
-        UsageLog.package_name,
-        UsageLog.app_name, # 앱 이름도 같이 가져오기
-        func.max(UsageLog.app_launch_count).label("launch_count"),
-        func.max(UsageLog.usage_duration).label("total_duration")
-    ).filter(UsageLog.user_id == user_id, 
-        UsageLog.date >= today_start,
-        UsageLog.date < next_day_start)\
-     .group_by(UsageLog.package_name, UsageLog.app_name)\
-     .order_by(
-     desc(text("launch_count")),    
-     desc(text("total_duration"))  # 실행횟수가 같다면, 사용시간 기준도 비교
- ).limit(4).all()
+    total_time_seconds = int(stats.total_time_seconds) if stats else 0
+    total_unlocks = int(stats.total_unlocks) if stats else 0
 
-    # 3. 가장 긴 연속 사용 시간
-    max_session = db.query(func.max(UsageLog.max_continuous_duration))\
-        .filter(UsageLog.user_id == user_id, 
-                UsageLog.date >= today_start, UsageLog.date < next_day_start).scalar() or 0
-    # 총 사용 시간, 언락
-    total_time_hour=(stats.total_time /3600) if stats and stats.total_time else 0
-    total_unlocks = stats.total_unlocks if stats and stats.total_unlocks else 0
+    # 2) most_used_app — usage_duration 합산 기준 1개
+    most_used = db.query(
+        UsageLog.package_name,
+        UsageLog.app_name,
+        func.coalesce(func.sum(UsageLog.usage_duration), 0).label("total_duration_seconds"),
+    ).filter(
+        UsageLog.user_id == user_id,
+        UsageLog.date >= today_start,
+        UsageLog.date < next_day_start,
+    ).group_by(
+        UsageLog.package_name,
+        UsageLog.app_name,
+    ).order_by(
+        desc(text("total_duration_seconds"))
+    ).first()
+
+    most_used_name = "데이터 없음"
+    most_used_minutes = 0
+    if most_used:
+        most_used_name = (
+            most_used.app_name
+            if most_used.app_name and most_used.app_name != "Unknown"
+            else most_used.package_name
+        )
+        most_used_minutes = int(round(int(most_used.total_duration_seconds or 0) / 60))
+
+    # 3) top_visited — app_launch_count 합산 기준 상위 3개
+    top_visited_rows = db.query(
+        UsageLog.package_name,
+        UsageLog.app_name,
+        func.coalesce(func.sum(UsageLog.app_launch_count), 0).label("launch_count"),
+    ).filter(
+        UsageLog.user_id == user_id,
+        UsageLog.date >= today_start,
+        UsageLog.date < next_day_start,
+    ).group_by(
+        UsageLog.package_name,
+        UsageLog.app_name,
+    ).order_by(
+        desc(text("launch_count"))
+    ).limit(3).all()
+
+    top_visited = [
+        {
+            "name": (row.app_name if row.app_name and row.app_name != "Unknown" else row.package_name),
+            "count": int(row.launch_count or 0),
+        }
+        for row in (top_visited_rows or [])
+    ]
+
+    # 4) longest_session — max_continuous_duration 최대값
+    longest_session_seconds = (
+        db.query(func.coalesce(func.max(UsageLog.max_continuous_duration), 0))
+        .filter(
+            UsageLog.user_id == user_id,
+            UsageLog.date >= today_start,
+            UsageLog.date < next_day_start,
+        )
+        .scalar()
+        or 0
+    )
 
     return {
         "summary": {
-            "total_time": round(total_time_hour,1), # 소수점 정리
+            "total_time": int(round(total_time_seconds / 60)),
             "total_unlocks": total_unlocks,
-            "longest_session": round(max_session / 3600, 1)
+            "longest_session": int(round(int(longest_session_seconds) / 60)),
         },
-        "top_visited": {
-            "main": {
-                "name": app_ranks[0].app_name if app_ranks and app_ranks[0].app_name != "Unknown" else (app_ranks[0].package_name if app_ranks else "데이터 없음"),
-                "count": int(app_ranks[0].launch_count) if app_ranks else 0     
-            },
-            "others": [
-                {
-                    "name": row.app_name if row.app_name != "Unknown" else row.package_name, 
-                    "count": int(row.launch_count)
-                } for row in app_ranks[1:4]
-            ]
-        }
+        "most_used_app": {"name": most_used_name, "minutes": most_used_minutes},
+        "top_visited": top_visited,
     }
 
 
