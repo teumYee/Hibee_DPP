@@ -7,7 +7,7 @@ retrieved_evidence는 파라미터로 받되 비어 있어도 동작 (나중에 
 import os
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("dpp_ai")
 
@@ -46,8 +46,8 @@ def generate_report(
     selected_patterns: List[Dict[str, Any]],
     kpt: dict,
     *,
-    retrieved_evidence: List[Any] | None = None,
-    rewrite_brief: str | None = None,
+    retrieved_evidence: Optional[List[Any]] = None,
+    rewrite_brief: Optional[str] = None,
     use_opus: bool = False,
 ) -> dict:
     """
