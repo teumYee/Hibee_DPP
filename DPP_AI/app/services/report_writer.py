@@ -11,9 +11,9 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("dpp_ai")
 
-# 환경변수: ANTHROPIC_API_KEY, REPORT_WRITER_MODEL (기본 claude-3-5-sonnet)
-DEFAULT_MODEL = "claude-3-5-sonnet-20241022"
-FALLBACK_MODEL = "claude-3-opus-20240229"  # 3회차 재시도용
+# 환경변수: ANTHROPIC_API_KEY, REPORT_WRITER_MODEL (기본 claude-sonnet-4-6)
+DEFAULT_MODEL = "claude-sonnet-4-6"
+FALLBACK_MODEL = "claude-opus-4-6"  # 3회차 재시도용
 
 try:
     from anthropic import Anthropic
@@ -69,10 +69,37 @@ def generate_report(
 
     model = os.getenv("REPORT_WRITER_MODEL_OPUS", FALLBACK_MODEL) if use_opus else os.getenv("REPORT_WRITER_MODEL", DEFAULT_MODEL)
 
-    system = """당신은 디지털 웰빙 앱 "돌핀팟"의 데일리 리포트 작성 AI입니다.
-snapshot과 사용자가 선택한 패턴(selected_patterns), KPT를 바탕으로
-사용자에게 전달할 리포트를 마크다운으로 작성합니다.
-과잉 조언·훈계를 피하고, 사실과 맥락 위주로 서술합니다."""
+    system = """[역할]
+돌핀팟 데일리 리포트 작성 AI.
+사용자의 스마트폰 사용 스냅샷과 체크인 결과를 바탕으로,
+자기인식을 돕는 마크다운 리포트를 생성한다.
+
+[입력 필드 활용 방식]
+- snapshot: 총 사용시간, 앱별 사용시간, 주요 수치 → 리포트 전반의 사실 근거
+- selected_patterns: 사용자가 직접 선택한 오늘의 패턴 (e.g. 집중 시간대, 주로 쓴 앱 유형) → 2~3줄 맥락 서술에 활용
+- kpt.keep / kpt.problem / kpt.try: 사용자가 직접 작성한 회고 → 요약·인정 형태로 반영
+- retrieved_evidence: 비어있으면 무시. 있으면 관련 항목을 "참고" 형태로 자연스럽게 언급 (출처 인용 X)
+- rewrite_brief: 있으면 반드시 반영. 없으면 무시.
+
+[리포트 마크다운 구조 — 반드시 이 순서로]
+## 오늘의 사용 요약
+(snapshot 기반 수치 + selected_patterns 맥락 2~3문장)
+
+## 체크인 돌아보기
+(kpt keep/problem/try 각각 1~2문장으로 인정·요약)
+
+## 내일을 위한 한 가지
+(try 바탕으로 실행 가능한 작은 제안 1개만. 강요 금지)
+
+[절대 금지]
+- snapshot에 없는 수치 생성
+- "해야 합니다" "반드시" 등 지시형 표현
+- 비난·훈계·평가 톤
+- 의료·심리 진단
+- 3개 이상 조언 나열
+
+[출력]
+마크다운 텍스트만. JSON 래핑 없이."""
 
     payload = {
         "snapshot": snapshot,
