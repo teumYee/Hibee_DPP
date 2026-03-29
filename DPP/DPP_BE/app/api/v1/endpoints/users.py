@@ -35,23 +35,24 @@ def save_nickname(body: NicknameRequest, db: Session = Depends(get_db)):
 def save_onboarding(body: OnboardingRequest, db: Session = Depends(get_db)):
     user = db.query(Users).filter(Users.id == body.user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.nickname = data.nickname
 
-    row = db.query(UserConfigs).filter(UserConfigs.user_id == body.user_id).first()
-    if row is None:
-        row = UserConfigs(user_id=body.user_id)
-        db.add(row)
+    config = db.query(User_Configs).filter(User_Configs.user_id == current_user_id).first()
+    if not config:
+        config = User_Configs(user_id=current_user_id)
+        db.add(config)
+    
+    config.goals = data.goals
+    config.active_times = data.active_times
+    config.struggles = data.struggles
+    config.night_mode_start = data.night_mode_start
+    config.night_mode_end = data.night_mode_end
+    config.checkin_time = data.checkin_time
 
-    row.goals = body.goals
-    row.active_times = body.active_times
-    row.night_mode_start = body.night_mode_start
-    row.night_mode_end = body.night_mode_end
-    row.struggles = body.struggles
-    row.focus_categories = body.focus_categories
-    row.checkin_time = None
-
-    stats = db.query(User_Stats).filter(User_Stats.user_id == body.user_id).first()
-    if stats is None:
+    stats = db.query(User_Stats).filter(User_Stats.user_id==current_user_id).first()
+    if not stats:
         stats = User_Stats(
             user_id=body.user_id,
             coin=0,

@@ -12,6 +12,7 @@ class OnboardingRequest(BaseModel):
     # 심야 모드 설정
     night_mode_start: str = "23:00"
     night_mode_end: str = "7:00"
+    checkin_time: str = "21:00"
 
 class CustomCategoryItem(BaseModel):
     package_name:str
