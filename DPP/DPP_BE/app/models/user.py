@@ -70,10 +70,10 @@ class Users(Base):
     # 아이템 보유 기록
     user_items = relationship("UserItems", back_populates="user")
 
-    user_config = relationship("UserConfigs", back_populates="user", uselist=False)
+    user_config = relationship("User_Configs", back_populates="user", uselist=False)
 
 
-class UserConfigs(Base):
+class User_Configs(Base):
     """온보딩·목표 등 사용자별 설정 (user_id당 1행)"""
     __tablename__ = "user_configs"
 
@@ -122,7 +122,7 @@ class User_Stats(Base):
     user = relationship("Users", back_populates="stats")
 
 # 기존 코드 호환용 별칭
-User_Configs = UserConfigs
+UserConfigs = User_Configs
 
 
 

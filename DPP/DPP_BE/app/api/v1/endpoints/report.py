@@ -1,7 +1,4 @@
 from datetime import date, datetime, timedelta
-from importlib import import_module
-from pathlib import Path
-import sys
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -24,6 +21,7 @@ from app.schemas.report import (
     WeeklyReportGenerateRequest,
     WeeklyReportResponse,
 )
+from services.ai_client import run_checkin_pipeline_via_ai_service
 from services.report_pipeline_service import (
     build_daily_report_response_payload,
     build_weekly_report_response_payload,
@@ -34,20 +32,6 @@ from services.report_pipeline_service import (
 )
 
 router = APIRouter()
-
-
-def _import_dpp_ai_checkin_pipeline():
-    current_file = Path(__file__).resolve()
-    repo_root = next((parent for parent in current_file.parents if (parent / "DPP_AI").exists()), None)
-    if repo_root is None:
-        raise RuntimeError("DPP_AI 디렉터리를 찾을 수 없습니다.")
-
-    repo_root_str = str(repo_root)
-    if repo_root_str not in sys.path:
-        sys.path.insert(0, repo_root_str)
-
-    module = import_module("DPP_AI.app.services.checkin_pipeline")
-    return module.run_checkin_pipeline
 
 
 def _build_checkin_pipeline_input(snapshot: Daily_SnapShots, user_config: User_Configs | None) -> Dict[str, Any]:
@@ -197,12 +181,7 @@ async def generate_pattern_candidates(
     pipeline_input = _build_checkin_pipeline_input(snapshot, user_config)
 
     try:
-        run_checkin_pipeline = _import_dpp_ai_checkin_pipeline()
-        pipeline_result = run_checkin_pipeline(
-            pipeline_input,
-            log_to_db=False,
-            db_session=None,
-        )
+        pipeline_result = run_checkin_pipeline_via_ai_service(pipeline_input)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"패턴 후보 생성 파이프라인 호출 실패: {exc}")
 
