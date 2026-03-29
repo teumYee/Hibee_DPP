@@ -1,10 +1,7 @@
 import json
 import os
-import sys
 from collections import Counter, defaultdict
 from datetime import date, timedelta
-from importlib import import_module
-from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import requests
@@ -15,6 +12,7 @@ from app.models.calendar import CheckIn
 from app.models.reports import DailyReports, ExpertKnowledge, WeeklyReports
 from app.models.usage_log import Daily_SnapShots
 from app.models.user import User_Configs
+from services.ai_client import run_report_pipeline_via_ai_service
 
 
 OPENAI_CHAT_API_URL = "https://api.openai.com/v1/chat/completions"
@@ -259,20 +257,6 @@ def run_rag_agent(
         "retrieved_evidence": retrieved_evidence,
     }
 
-
-def _import_dpp_ai_report_pipeline():
-    current_file = Path(__file__).resolve()
-    repo_root = next((parent for parent in current_file.parents if (parent / "DPP_AI").exists()), None)
-    if repo_root is None:
-        raise RuntimeError("DPP_AI 디렉터리를 찾을 수 없습니다.")
-    repo_root_str = str(repo_root)
-    if repo_root_str not in sys.path:
-        sys.path.insert(0, repo_root_str)
-
-    module = import_module("DPP_AI.app.services.report_pipeline")
-    return module.run_report_pipeline
-
-
 def _fallback_report_markdown(snapshot: Daily_SnapShots, checkin: CheckIn) -> str:
     return (
         "# 데일리 리포트\n\n"
@@ -419,12 +403,7 @@ def run_daily_report_pipeline(
     }
 
     try:
-        run_report_pipeline = _import_dpp_ai_report_pipeline()
-        pipeline_result = run_report_pipeline(
-            pipeline_input,
-            log_to_db=False,
-            db_session=None,
-        )
+        pipeline_result = run_report_pipeline_via_ai_service(pipeline_input)
         report_markdown = pipeline_result.get("report_markdown") or _fallback_report_markdown(snapshot, checkin)
         judge_results = pipeline_result.get("judge_results") or []
         last_judge = judge_results[-1] if judge_results else {}
@@ -437,7 +416,7 @@ def run_daily_report_pipeline(
         report_markdown = _fallback_report_markdown(snapshot, checkin)
         review_result = {
             "verdict": "FALLBACK",
-            "issues": [f"DPP_AI pipeline import/call failed: {exc}"],
+            "issues": [f"DPP_AI service call failed: {exc}"],
             "rewrite_brief": "",
         }
 
