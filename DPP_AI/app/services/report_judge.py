@@ -7,7 +7,7 @@ report_judge.py — GPT-4o-mini로 리포트 검수
 import os
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from openai import OpenAI
 

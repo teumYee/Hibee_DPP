@@ -11,6 +11,12 @@ class Users(Base):
     nickname = Column(String,unique=True, index=True)
     email = Column(String, unique=True, index=True)
     target_time = Column(Integer, nullable=True)
+    current_xp = Column(Integer, nullable=True)
+    equipped_character = Column(String(100), nullable=True)
+    coin = Column(Integer, default=0)
+    Night_time = Column(Integer, default=0)
+    night_mode_start = Column(String, default="23:00")
+    night_mode_end = Column(String, default="07:00")
     
     created_at = Column(DateTime, default=datetime.now())
     updated_at = Column(DateTime, default=datetime.now(), onupdate=datetime.now)
@@ -64,6 +70,27 @@ class Users(Base):
     # 아이템 보유 기록
     user_items = relationship("UserItems", back_populates="user")
 
+    user_config = relationship("UserConfigs", back_populates="user", uselist=False)
+
+
+class UserConfigs(Base):
+    """온보딩·목표 등 사용자별 설정 (user_id당 1행)"""
+    __tablename__ = "user_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False, index=True)
+
+    goals = Column(JSON, nullable=True)
+    active_times = Column(JSON, nullable=True)
+    night_mode_start = Column(String(255), nullable=True)
+    night_mode_end = Column(String(255), nullable=True)
+    struggles = Column(JSON, nullable=True)
+    focus_categories = Column(JSON, nullable=True)
+    checkin_time = Column(String(255), nullable=True)
+
+    user = relationship("Users", back_populates="user_config")
+
+
 # 사용자 앱 카테고리 설정
 class User_App_Categories(Base):
     __tablename__ = "user_app_categories"
@@ -94,25 +121,8 @@ class User_Stats(Base):
 
     user = relationship("Users", back_populates="stats")
 
-class User_Configs(Base):
-    __tablename__ = "user_configs"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-
-    # 온보딩 마스터 테이블 id 리스트 저장
-    goals=Column(JSON)
-    active_times=Column(JSON)
-    struggles=Column(JSON)
-
-    # 심야 모드 설정 
-    # 시간만 비교할 것이므로 String이 다루기 편함
-    night_mode_start = Column(String, default="23:00") 
-    night_mode_end = Column(String, default="07:00")
-
-    # 체크인 시간 설정
-    checkin_time = Column(String, default="21:00")
-
-    user = relationship("Users", back_populates="configs")
+# 기존 코드 호환용 별칭
+User_Configs = UserConfigs
 
 
 

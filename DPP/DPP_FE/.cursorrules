@@ -1,0 +1,76 @@
+# Hibee / DPP_FE — Cursor 규칙
+
+실제 앱 코드 루트: `DPP/DPP_FE/src/`. 스택: React Native 0.83, TypeScript, React Navigation (native-stack + bottom-tabs), Zustand, `fetch`만 사용 (axios 없음), 스타일은 `StyleSheet.create`. 향후 AI/BE API 연동 예정.
+
+---
+
+## 1. 절대 하지 말 것
+
+- **`any` 타입**: 알 수 없으면 `unknown` + 타입 가드, 또는 명시적 DTO/응답 타입 정의.
+- **화면·컴포넌트에서 직접 `fetch` 호출**: HTTP는 `src/services/api/` 아래 공통 클라이언트·함수로만 수행 (아래 §5).
+- **`axios` 도입 또는 설치**: 프로젝트 표준은 `fetch` + 래퍼.
+- **네비게이터에 타입 없이 `name`만 문자열로 추가**: 반드시 `src/navigation/types.ts`에 ParamList를 먼저 반영.
+- **스토어에 UI 전용 일시 상태 넣기**: 탭/모달 등은 가능하면 로컬 state; Zustand는 도메인·세션·앱 전역에만.
+- **불필요한 `@ts-ignore` / 광범위 `eslint-disable`**: 최소 범위·한 줄만, 이유 주석 필수.
+
+---
+
+## 2. 새 기능 추가 시 파일 작성 순서 (권장)
+
+1. **요구사항에 맞는 타입**  
+   - API 응답/요청: `src/types/` 또는 기능 폴더 내 `types.ts` (기존 패턴에 맞출 것).
+2. **라우팅이 바뀌면**  
+   - `src/navigation/types.ts`에 ParamList 키 추가 → 스택/탭에 `Screen` 등록 (§3).
+3. **서버와 통신하면**  
+   - `src/services/api/endpoints.ts`에 경로 상수 → `client`(§5)로 호출 함수 작성 → 화면에서는 그 함수만 import.
+4. **전역 상태가 필요하면**  
+   - `src/store/<domain>.store.ts` (§4) → 화면에서는 훅만 사용.
+5. **기능 폴더**  
+   - `src/features/<feature>/screens/`, 필요 시 `components/`, `hooks/`.
+6. **스타일**  
+   - 같은 파일 하단 `StyleSheet.create` 또는 소규모 인라인은 화면 단위 일관성 유지.
+
+---
+
+## 3. 네비게이션 타입 추가 규칙
+
+- **단일 출처**: 모든 스택/탭 파라미터 타입은 `DPP/DPP_FE/src/navigation/types.ts`에 정의.
+- **이름 규칙**  
+  - 온보딩 플로우: `OnboardingStackParamList`  
+  - 메인 하단 탭: `MainTabParamList` — 키는 `MainTabs.tsx`의 `Tab.Screen` **`name`과 문자열 일치** (대소문자 포함).  
+  - 루트: `RootStackParamList` (`Onboarding` | `Main` 등).
+- **화면에 파라미터가 있으면** `SomeScreen: { id: string }` 형태로 명시; 없으면 `undefined`.
+- **타입 추가 후** 해당 `Navigator`에 `createXNavigator<...>()` 제네릭과 `Screen` 등록을 같은 PR/작업에서 맞출 것.
+- **탭 안에 스택을 넣는 등 구조 변경 시** 새 ParamList 이름을 도메인에 맞게 추가하고, `navigation/types.ts` 상단에 짧은 주석으로 관계를 적어둘 것.
+
+---
+
+## 4. Zustand 스토어 작성 패턴
+
+- **위치**: `DPP/DPP_FE/src/store/<이름>.store.ts`
+- **이름**: `useXxxStore`, `create`로 생성, 파일명은 `xxx.store.ts`.
+- **상태 타입**: 파일 상단에 `type XxxState = { ... }` 로 필드와 액션 시그니처를 한곳에 정의.
+- **비동기·영속화**: `AsyncStorage` 등은 액션 내부에서 처리하고, `set`으로 스토어 반영 (기존 `auth.store.ts` 패턴).
+- **선택 구독**: 화면에서는 `useXxxStore((s) => s.field)` 형태로 필요한 조각만 구독.
+- **파생 값**: `get()`이 필요하면 스토어 내부에서 계산하거나, selector를 명확히 문서화.
+
+---
+
+## 5. API 서비스 함수 — 위치와 패턴
+
+- **위치**  
+  - 공통 HTTP: `DPP/DPP_FE/src/services/api/client.ts` — base URL, `fetch` 래핑, 공통 헤더(예: `Authorization` from `useAuthStore.getState()`), JSON 파싱, 에러 정규화.  
+  - 엔드포인트 경로: `DPP/DPP_FE/src/services/api/endpoints.ts` — 문자열 상수 또는 작은 빌더만.  
+  - 도메인별 호출: 같은 폴더에 `logs.api.ts`, `user.api.ts` 등으로 분리하거나, 규모가 작으면 `api/` 하위 단일 파일로 시작 후 분리.
+- **패턴**  
+  - 각 함수는 `async`, 요청/응답 타입을 명시.  
+  - `fetch`는 `client`의 `get/post/patch/delete` 같은 메서드로만 사용 (구현 후 화면은 client를 직접 부르지 않고 도메인 함수만 호출).  
+  - 환경별 base URL은 추후 `.env` / 빌드 설정과 맞추되, 하드코딩은 `client` 한 곳으로만 제한.
+- **에러**: 네트워크/HTTP 실패 시 throw 또는 Result 타입 중 프로젝트에서 정한 한 가지로 통일; 빈 `catch` 금지.
+
+---
+
+## 일반
+
+- 새 코드는 기존 파일의 import 스타일·따옴표·들여쓰기를 따른다.
+- 변경 범위는 요청된 기능에 한정하고, 무관한 리팩터는 하지 않는다.

@@ -1,11 +1,19 @@
-package com.dpp
+package com.dolphinpod
 
 import android.app.AppOpsManager
 import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.os.Build
+import android.util.Base64
 import android.provider.Settings
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
@@ -15,6 +23,7 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.WritableArray
 import com.facebook.react.bridge.WritableMap
 import java.util.Calendar
+import java.io.ByteArrayOutputStream
 
 class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactCtx) {
@@ -32,6 +41,153 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         reactCtx.startActivity(intent)
+    }
+
+    /**
+     * 런처에 등록된 설치 앱 목록 (패키지명 + 표시 이름)
+     */
+    @ReactMethod
+    fun getInstalledApps(promise: Promise) {
+        try {
+            val pm = reactCtx.packageManager
+            val launchIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+            val apps: List<ResolveInfo> = pm.queryIntentActivities(launchIntent, 0)
+            val result: WritableArray = Arguments.createArray()
+            val seen = mutableSetOf<String>()
+            for (ri in apps) {
+                val pkg = ri.activityInfo?.packageName ?: continue
+                if (!seen.add(pkg)) continue
+                val label = try {
+                    pm.getApplicationLabel(ri.activityInfo.applicationInfo).toString()
+                } catch (_: Exception) {
+                    pkg
+                }
+                val map: WritableMap = Arguments.createMap().apply {
+                    putString("packageName", pkg)
+                    putString("appName", label)
+                }
+                result.pushMap(map)
+            }
+            promise.resolve(result)
+        } catch (e: Exception) {
+            promise.reject("INSTALLED_APPS", e.message, e)
+        }
+    }
+
+    private fun isSystemApp(ai: ApplicationInfo): Boolean {
+        val flags = ai.flags
+        val isSystem = (flags and ApplicationInfo.FLAG_SYSTEM) != 0
+        val isUpdatedSystem = (flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+        return isSystem || isUpdatedSystem
+    }
+
+    private fun mapCategory(category: Int): Pair<Int, String> {
+        // 요구 스펙: 0~7만 매핑, 나머지는 -1(미분류)
+        return when (category) {
+            ApplicationInfo.CATEGORY_GAME -> 0 to "게임"
+            ApplicationInfo.CATEGORY_AUDIO -> 1 to "오디오"
+            ApplicationInfo.CATEGORY_VIDEO -> 2 to "비디오"
+            ApplicationInfo.CATEGORY_IMAGE -> 3 to "이미지"
+            ApplicationInfo.CATEGORY_SOCIAL -> 4 to "소셜"
+            ApplicationInfo.CATEGORY_NEWS -> 5 to "뉴스"
+            ApplicationInfo.CATEGORY_MAPS -> 6 to "지도"
+            ApplicationInfo.CATEGORY_PRODUCTIVITY -> 7 to "생산성"
+            else -> -1 to "미분류"
+        }
+    }
+
+    private fun drawableToBase64Png(drawable: Drawable, sizePx: Int): String? {
+        return try {
+            val bitmap = when (drawable) {
+                is BitmapDrawable -> {
+                    val b = drawable.bitmap
+                    if (b != null) Bitmap.createScaledBitmap(b, sizePx, sizePx, true)
+                    else null
+                }
+                else -> null
+            }
+
+            val targetBitmap = bitmap ?: Bitmap.createBitmap(
+                sizePx,
+                sizePx,
+                Bitmap.Config.ARGB_8888,
+            )
+            if (bitmap == null) {
+                val canvas = Canvas(targetBitmap)
+                drawable.setBounds(0, 0, sizePx, sizePx)
+                drawable.draw(canvas)
+            }
+
+            val baos = ByteArrayOutputStream()
+            targetBitmap.compress(Bitmap.CompressFormat.PNG, 100, baos)
+            Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * 설치된(런처) 앱 목록 + Android category 기반 분류
+     * 반환: [{ packageName, appName, categoryId, categoryName }]
+     */
+    @ReactMethod
+    fun getInstalledAppsWithCategory(promise: Promise) {
+        try {
+            val pm: PackageManager = reactCtx.packageManager
+            val launchIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+            val apps: List<ResolveInfo> = pm.queryIntentActivities(launchIntent, 0)
+            val result: WritableArray = Arguments.createArray()
+            val seen = mutableSetOf<String>()
+
+            for (ri in apps) {
+                val pkg = ri.activityInfo?.packageName ?: continue
+                if (!seen.add(pkg)) continue
+
+                val appInfo = try {
+                    pm.getApplicationInfo(pkg, 0)
+                } catch (_: Exception) {
+                    null
+                } ?: continue
+
+                if (isSystemApp(appInfo)) continue
+
+                val label = try {
+                    pm.getApplicationLabel(appInfo).toString().ifEmpty { pkg }
+                } catch (_: Exception) {
+                    pkg
+                }
+
+                val rawCat = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    appInfo.category
+                } else {
+                    -1
+                }
+                val mapped = mapCategory(rawCat)
+
+                val iconBase64: String? = try {
+                    val iconDrawable = appInfo.loadIcon(pm)
+                    if (iconDrawable != null) drawableToBase64Png(iconDrawable, 48) else null
+                } catch (_: Exception) {
+                    null
+                }
+
+                val map: WritableMap = Arguments.createMap().apply {
+                    putString("packageName", pkg)
+                    putString("appName", label)
+                    putInt("categoryId", mapped.first)
+                    putString("categoryName", mapped.second)
+                    if (iconBase64 != null) putString("iconBase64", iconBase64)
+                }
+                result.pushMap(map)
+            }
+            promise.resolve(result)
+        } catch (e: Exception) {
+            promise.reject("INSTALLED_APPS_WITH_CATEGORY", e.message, e)
+        }
     }
 
     /**

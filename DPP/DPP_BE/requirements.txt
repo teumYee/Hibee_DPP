@@ -19,7 +19,6 @@ python-jose[cryptography]
 python-multipart
 
 # 5. 기타
-
 requests
 google-auth
 openai

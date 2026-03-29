@@ -1,30 +1,39 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from datetime import date, timedelta
+
 from app.core.database import get_db
-from app.models import Users, User_Stats, User_Configs
-from app.schemas.onboarding import OnboardingRequest
+from app.models.user import Users, UserConfigs, User_Stats
+from app.models.calendar import CheckIn
+from app.schemas.users import NicknameRequest, OnboardingRequest
 
-router = APIRouter(prefix="/api/v1/users", tags=["users"])
+router = APIRouter()
 
-@router.post("/onboarding")
-async def complete_onboarding(
-    data: OnboardingRequest,
-    db : Session = Depends(get_db),
-    current_user_id: int=1 # 임시
 
-):
-    existing_nickname = db.query(Users).filter(
-        Users.nickname == data.nickname, 
-        Users.id != current_user_id
-    ).first()
+@router.post("/nickname")
+def save_nickname(body: NicknameRequest, db: Session = Depends(get_db)):
+    user = db.query(Users).filter(Users.id == body.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
 
-    if existing_nickname:
+    user.nickname = body.nickname.strip()
+    try:
+        db.commit()
+        db.refresh(user)
+    except IntegrityError:
+        db.rollback()
         raise HTTPException(
-            status_code=400, 
-            detail="이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요."
+            status_code=409,
+            detail="이미 사용 중인 닉네임입니다.",
         )
 
-    user = db.query(Users).filter(Users.id == current_user_id).first()
+    return {"message": "닉네임 저장 완료"}
+
+
+@router.post("/onboarding")
+def save_onboarding(body: OnboardingRequest, db: Session = Depends(get_db)):
+    user = db.query(Users).filter(Users.id == body.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -45,16 +54,42 @@ async def complete_onboarding(
     stats = db.query(User_Stats).filter(User_Stats.user_id==current_user_id).first()
     if not stats:
         stats = User_Stats(
-            user_id=current_user_id,
+            user_id=body.user_id,
             coin=0,
             total_checkin_count=0,
-            continuous_days=0
+            continuous_days=0,
         )
         db.add(stats)
-    try:
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=f"Data Integrity error: {str(e)}")
-    
-    return {"message": "온보딩 생성 완료!"}             
+
+    db.commit()
+    db.refresh(row)
+
+    return {"message": "온보딩 저장 완료"}
+
+
+@router.get("/me/summary")
+def get_me_summary(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(Users).filter(Users.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+
+    # coin은 users 테이블 기준
+    coin = int(user.coin or 0)
+
+    # streak_days: daily_checkins 테이블에서 오늘부터 연속으로 존재하는 날짜 수 계산
+    # (user_stats 테이블이 현재 모델에 없어서 daily_checkins 기반으로 계산)
+    today = date.today()
+    dates = db.query(CheckIn.date).filter(CheckIn.user_id == user_id).all()
+    date_set = {row[0] for row in dates if row and row[0] is not None}
+
+    streak = 0
+    cursor = today
+    while cursor in date_set:
+        streak += 1
+        cursor = cursor - timedelta(days=1)
+
+    return {
+        "nickname": user.nickname,
+        "coin": coin,
+        "streak_days": streak,
+    }

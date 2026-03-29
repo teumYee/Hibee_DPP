@@ -1,7 +1,6 @@
 
 from app.api.v1.endpoints.log import router as log_router
 from app.api.v1.endpoints.auth import router as auth_router
-from app.api.v1.endpoints.log import router as log_router
 from app.api.v1.endpoints.dashboard import router as dashboard_router
 from app.api.v1.endpoints.users import router as onboarding_router
 from app.api.v1.endpoints.report import router as report_router
