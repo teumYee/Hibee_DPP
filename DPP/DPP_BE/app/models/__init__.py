@@ -1,7 +1,7 @@
 # 1. Base 클래스
 # 2. 각 파일에 정의된 모델 클래스 import
 
-from .user import Users, User_App_Categories, User_Stats, User_Configs
+from .user import Users, User_App_Categories, User_Stats, User_Configs, UserConfigs
 from .usage_log import UsageLog, Daily_SnapShots
 from .calendar import (
     CalendarEvent,
@@ -29,6 +29,7 @@ __all__ = [
     "TitlesMaster",
     "Users",
     "User_Stats",
+    "UserConfigs",
     "User_Configs",
     "User_App_Categories",
     "UserCharacters",
