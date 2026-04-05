@@ -17,8 +17,25 @@ from .reports import (
     ReportEvidenceTrace,
     ReportReviewLog,
 )
-from .gamification import UserAchievements, UserCharacters, Characters, Achievements
-from .challenge import Challenge, ChallengeInstances, Condition, ProgressLogs, Rewards
+from .gamification import (
+    Achievements,
+    CharacterAcquisitionLogs,
+    Characters,
+    Items,
+    UserAchievements,
+    UserCharacters,
+    UserItems,
+)
+from .challenge import (
+    Challenge,
+    ChallengeInstances,
+    Condition,
+    ProgressLogs,
+    Rewards,
+    StrollGroups,
+    StrollGroupMembers,
+    StrollGroupCheckinContributions,
+)
 from .social import Friendships, Alerts
 from .recommendactions import Recommendactions, RecommendedActions, UserFeedback
 from .master import OnboardingOptionsMaster, CategoryMaster, TitlesMaster
@@ -33,6 +50,9 @@ __all__ = [
     "User_App_Categories",
     "UserCharacters",
     "UserAchievements",
+    "UserItems",
+    "Items",
+    "CharacterAcquisitionLogs",
     "ChallengeInstances",
     "Daily_SnapShots",
     "UsageLog",
@@ -53,6 +73,9 @@ __all__ = [
     "Condition",
     "ProgressLogs",
     "Rewards",
+    "StrollGroups",
+    "StrollGroupMembers",
+    "StrollGroupCheckinContributions",
     "Friendships",
     "Alerts",
     "Recommendactions",

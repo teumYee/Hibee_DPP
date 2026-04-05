@@ -92,11 +92,16 @@ def _is_friend(db: Session, user_id: int, other_user_id: int) -> bool:
 def _get_or_create_user_stats(db: Session, user_id: int) -> User_Stats:
     stats = db.query(User_Stats).filter(User_Stats.user_id == user_id).first()
     if stats:
+        if stats.coin is None:
+            legacy_coin = db.query(Users.coin).filter(Users.id == user_id).scalar()
+            stats.coin = int(legacy_coin or 0)
+            db.flush()
         return stats
 
+    legacy_coin = db.query(Users.coin).filter(Users.id == user_id).scalar()
     stats = User_Stats(
         user_id=user_id,
-        coin=0,
+        coin=int(legacy_coin or 0),
         total_checkin_count=0,
         continuous_days=0,
         friend_count=0,

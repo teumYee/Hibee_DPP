@@ -47,11 +47,16 @@ def _get_or_create_user_config(db: Session, user_id: int) -> User_Configs:
 def _get_or_create_user_stats(db: Session, user_id: int) -> User_Stats:
     stats = db.query(User_Stats).filter(User_Stats.user_id == user_id).first()
     if stats:
+        if stats.coin is None:
+            legacy_coin = db.query(Users.coin).filter(Users.id == user_id).scalar()
+            stats.coin = int(legacy_coin or 0)
+            db.flush()
         return stats
 
+    legacy_coin = db.query(Users.coin).filter(Users.id == user_id).scalar()
     stats = User_Stats(
         user_id=user_id,
-        coin=0,
+        coin=int(legacy_coin or 0),
         total_checkin_count=0,
         continuous_days=0,
         friend_count=0,
@@ -296,6 +301,7 @@ def delete_my_app_data(
     stats = _get_or_create_user_stats(db, user_id)
     stats.current_title_id = None
     stats.equipped_character = None
+    stats.social_representative_character_id = None
     stats.total_checkin_count = 0
     stats.last_chekin_date = None
     stats.last_login_date = None
@@ -308,6 +314,7 @@ def delete_my_app_data(
     current_user.target_time = None
     current_user.current_xp = 0
     current_user.equipped_character = None
+    # 레거시 컬럼은 제거 전까지 초기화만 유지한다.
     current_user.coin = 0
     current_user.night_mode_start = "23:00"
     current_user.night_mode_end = "07:00"
@@ -336,8 +343,8 @@ def get_me_summary(user_id: int, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
 
-    # coin은 users 테이블 기준
-    coin = int(user.coin or 0)
+    stats = _get_or_create_user_stats(db, user_id)
+    coin = int(stats.coin or 0)
 
     # streak_days: daily_checkins 테이블에서 오늘부터 연속으로 존재하는 날짜 수 계산
     # (user_stats 테이블이 현재 모델에 없어서 daily_checkins 기반으로 계산)
