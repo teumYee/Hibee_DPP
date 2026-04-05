@@ -1,6 +1,19 @@
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Float, Boolean
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    JSON,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from app.core.database import Base
 
 class Challenge(Base):
@@ -90,5 +103,78 @@ class Rewards(Base):
 
     # 관계 정리
     instance = relationship("ChallengeInstances", back_populates = "rewards")
+
+
+class StrollGroups(Base):
+    __tablename__ = "stroll_groups"
+    __table_args__ = (
+        UniqueConstraint("group_code", name="uq_stroll_groups_group_code"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(100), nullable=True)
+    group_code = Column(String(12), nullable=False, index=True)
+    join_mode = Column(String(20), nullable=False, default="CODE")
+    status = Column(String(20), nullable=False, default="ACTIVE")
+    week_start_date = Column(Date, nullable=False, index=True)
+    week_end_date = Column(Date, nullable=False, index=True)
+    max_members = Column(Integer, nullable=False, default=5)
+    target_checkin_count = Column(Integer, nullable=False)
+    current_checkin_count = Column(Integer, nullable=False, default=0)
+    reward_coin = Column(Integer, nullable=False, default=30)
+    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    dolphin_name = Column(String(50), nullable=True)
+    ending_snapshot = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    challenge_started_at = Column(DateTime(timezone=True), server_default=func.now())
+    ended_at = Column(DateTime(timezone=True), nullable=True)
+
+    creator = relationship(
+        "Users",
+        foreign_keys=[created_by_user_id],
+        back_populates="stroll_groups_created",
+    )
+    members = relationship("StrollGroupMembers", back_populates="group")
+    contributions = relationship("StrollGroupCheckinContributions", back_populates="group")
+
+
+class StrollGroupMembers(Base):
+    __tablename__ = "stroll_group_members"
+    __table_args__ = (
+        UniqueConstraint("group_id", "user_id", name="uq_stroll_group_members_group_user"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("stroll_groups.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    member_status = Column(String(20), nullable=False, default="ACTIVE")
+    join_source = Column(String(20), nullable=False, default="CODE")
+    joined_at = Column(DateTime(timezone=True), server_default=func.now())
+    left_at = Column(DateTime(timezone=True), nullable=True)
+    contribution_count = Column(Integer, nullable=False, default=0)
+    reward_claimed_at = Column(DateTime(timezone=True), nullable=True)
+
+    group = relationship("StrollGroups", back_populates="members")
+    user = relationship("Users", back_populates="stroll_group_memberships")
+    contributions = relationship("StrollGroupCheckinContributions", back_populates="member")
+
+
+class StrollGroupCheckinContributions(Base):
+    __tablename__ = "stroll_group_checkin_contributions"
+    __table_args__ = (
+        UniqueConstraint("group_id", "user_id", "checkin_date", name="uq_stroll_group_contribution_daily"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("stroll_groups.id"), nullable=False, index=True)
+    group_member_id = Column(Integer, ForeignKey("stroll_group_members.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    checkin_id = Column(Integer, ForeignKey("daily_checkins.id", ondelete="SET NULL"), nullable=True)
+    checkin_date = Column(Date, nullable=False, index=True)
+    counted_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    group = relationship("StrollGroups", back_populates="contributions")
+    member = relationship("StrollGroupMembers", back_populates="contributions")
+    user = relationship("Users")
 
 
