@@ -1,13 +1,7 @@
 // 집중 관찰 카테고리
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-} from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet } from "react-native";
 import type {
   NativeStackNavigationProp,
   NativeStackScreenProps,
@@ -112,7 +106,7 @@ export function InitialFocusCategoryScreen({ navigation, route }: Props) {
       onBack={() => navigation.goBack()}
       headerRight={
         <Pressable onPress={() => void onSkip()} hitSlop={8} accessibilityRole="button">
-          <Text style={styles.skipText}>건너뛰기</Text>
+          <AppText style={styles.skipText}>건너뛰기</AppText>
         </Pressable>
       }
       footer={
@@ -130,7 +124,7 @@ export function InitialFocusCategoryScreen({ navigation, route }: Props) {
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.primaryBtnText}>Pod 입장하기</Text>
+            <AppText style={styles.primaryBtnText}>Pod 입장하기</AppText>
           )}
         </Pressable>
       }
@@ -140,9 +134,9 @@ export function InitialFocusCategoryScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
       >
         {categories.length === 0 ? (
-          <Text style={styles.empty}>
+          <AppText style={styles.empty}>
             선택할 카테고리가 없어요. 이전 단계에서 앱을 확인해주세요.
-          </Text>
+          </AppText>
         ) : null}
         {categories.map((c) => {
           const on = selected.has(c.id);
@@ -158,13 +152,13 @@ export function InitialFocusCategoryScreen({ navigation, route }: Props) {
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}
             >
-              <Text style={styles.emoji}>{c.icon ?? "📁"}</Text>
-              <Text style={[styles.cardTitle, on && styles.cardTitleOn]}>
+              <AppText style={styles.emoji}>{c.icon ?? "📁"}</AppText>
+              <AppText style={[styles.cardTitle, on && styles.cardTitleOn]}>
                 {c.name}
-              </Text>
-              <Text style={[styles.cardMeta, on && styles.cardMetaOn]}>
+              </AppText>
+              <AppText style={[styles.cardMeta, on && styles.cardMetaOn]}>
                 앱 {c.app_count}개
-              </Text>
+              </AppText>
             </Pressable>
           );
         })}
@@ -211,7 +205,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     flex: 1,
     fontSize: 16,
-    fontWeight: "700",
     color: "#111111",
   },
   cardTitleOn: {
@@ -239,11 +232,9 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: "700",
   },
   skipText: {
     color: SKIP,
     fontSize: 14,
-    fontWeight: "600",
   },
 });

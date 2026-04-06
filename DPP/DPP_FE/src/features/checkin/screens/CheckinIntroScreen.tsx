@@ -1,12 +1,6 @@
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -50,7 +44,7 @@ export function CheckinIntroScreen({ navigation }: Props) {
         accessibilityRole="button"
         accessibilityLabel="닫기"
       >
-        <Text style={styles.closeText}>✕</Text>
+        <AppText style={styles.closeText}>✕</AppText>
       </Pressable>
 
       <View style={styles.center}>
@@ -58,10 +52,10 @@ export function CheckinIntroScreen({ navigation }: Props) {
           <View style={styles.droplet} />
           <View style={styles.moon} />
         </View>
-        <Text style={styles.title}>오늘 하루,{"\n"}잠깐 돌아볼까요?</Text>
-        <Text style={styles.subtitle}>
+        <AppText style={styles.title}>오늘 하루,{"\n"}잠깐 돌아볼까요?</AppText>
+        <AppText style={styles.subtitle}>
           오늘의 흐름을 함께 정리하는{"\n"}짧은 대화 시간이에요
-        </Text>
+        </AppText>
       </View>
 
       <View style={styles.footer}>
@@ -75,7 +69,7 @@ export function CheckinIntroScreen({ navigation }: Props) {
           {loading ? (
             <ActivityIndicator color="#2E7FC1" />
           ) : (
-            <Text style={styles.primaryLabel}>시작하기</Text>
+            <AppText style={styles.primaryLabel}>시작하기</AppText>
           )}
         </Pressable>
         <Pressable
@@ -83,7 +77,7 @@ export function CheckinIntroScreen({ navigation }: Props) {
           onPress={() => navigation.goBack()}
           accessibilityRole="button"
         >
-          <Text style={styles.skipLabel}>지금은 한 번 넘어갈게요</Text>
+          <AppText style={styles.skipLabel}>지금은 한 번 넘어갈게요</AppText>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -137,7 +131,6 @@ const styles = StyleSheet.create({
   title: {
     color: "#FFFFFF",
     fontSize: 28,
-    fontWeight: "700",
     textAlign: "center",
     lineHeight: 36,
   },
@@ -168,7 +161,6 @@ const styles = StyleSheet.create({
   primaryLabel: {
     color: "#2E7FC1",
     fontSize: 17,
-    fontWeight: "700",
   },
   skipBtn: {
     alignItems: "center",

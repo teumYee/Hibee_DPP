@@ -1,1 +1,0 @@
-// Social board screen component

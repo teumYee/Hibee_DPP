@@ -1,4 +1,5 @@
-
+from dotenv import load_dotenv
+load_dotenv()
 from app.api.v1.endpoints.log import router as log_router
 from app.api.v1.endpoints.auth import router as auth_router
 from app.api.v1.endpoints.dashboard import router as dashboard_router

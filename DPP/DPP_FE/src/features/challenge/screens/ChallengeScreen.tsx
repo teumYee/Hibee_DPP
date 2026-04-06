@@ -1,12 +1,13 @@
+import { AppText } from "../../../components/AppText";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export function ChallengeScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.center}>
-        <Text style={styles.text}>준비 중</Text>
+        <AppText style={styles.text}>준비 중</AppText>
       </View>
     </SafeAreaView>
   );

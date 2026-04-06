@@ -1,85 +1,155 @@
-// 메인 홈 — 바다 배경 + 돌고래
+// 메인 홈 — 바다 배경 + 사용 로그 1건당 물고기 스프라이트(S/M/L/XL, tint 랜덤색)
+//
+// 로그가 쌓이는 흐름(요약):
+// 1) 안드로이드 UsageStatsModule.getTodayUsage() 등으로 앱별 사용 구간을 읽음
+// 2) 대시보드 진입·홈 포커스 시 syncUsageLogsOnDashboardEnter() → POST /api/v1/logs
+// 3) BE는 (user, package_name, first_time_stamp) 중복이 아니면 usage_logs 행 INSERT
+// 4) 홈은 GET /api/v1/logs/{userId}로 받아, 오늘(로컬 날짜 기준 first_time_stamp) 행마다 원 1개 표시
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Image,
+  ImageBackground,
   LayoutChangeEvent,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { IconButton, useIconButtonSize } from "../../../components/IconButton";
 import type { MainStackParamList } from "../../../navigation/types";
+import {
+  getUsageLogsByUserId,
+  type UsageLogRow,
+} from "../../../services/api/dashboard.api";
 import { getUserSummary } from "../../../services/api/main.api";
+import { useAuthStore } from "../../../store/auth.store";
+import { syncUsageLogsOnDashboardEnter } from "../../dashboard/utils/syncUsageLogs";
 
 type Props = NativeStackScreenProps<MainStackParamList, "Home">;
 
-export type Dolphin = {
+/** Aseprite S/M/L/XL 에셋 — 흑백 PNG + tintColor */
+export type FishTier = "s" | "m" | "l" | "xl";
+
+const FISH_IMAGE = {
+  s: require("../../../assets/images/S_fish.png"),
+  m: require("../../../assets/images/M_fish.png"),
+  l: require("../../../assets/images/L_fish.png"),
+  xl: require("../../../assets/images/XL_fish.png"),
+} as const;
+
+/** 레이아웃·충돌 박스 (dp, 정사각) — 스프라이트 비율은 contain */
+const TIER_LAYOUT_PX: Record<FishTier, number> = {
+  s: 30,
+  m: 60,
+  l: 100,
+  /** 특대 — 에셋 비율상 박스 안에 여백이 많아 보이면 값을 더 키움 */
+  xl: 400,
+};
+
+export type SeaOrb = {
   id: string;
   x: Animated.Value;
   y: Animated.Value;
   color: string;
-  size: number;
-  bubbleText?: string;
+  tier: FishTier;
+  /** 애니메이션 경계용 한 변 길이 */
+  layoutSize: number;
 };
 
-const PALETTE = [
-  "#FF6B9D",
-  "#FFB347",
-  "#87CEEB",
-  "#98FB98",
-  "#DDA0DD",
-  "#F0E68C",
-  "#40E0D0",
-] as const;
+const MAX_ORBS = 48;
 
-const BUBBLE_POOL = [
-  "오늘도 헤엄쳤어요!",
-  "파도가 잔잔해요",
-  "같이 헤엄쳐요~",
-  "오늘 몇 번째야?",
-  "바다가 좋아!",
-  "잠깐 쉬어가요",
-] as const;
+/** 임시: 중·대·특대 물고기 3마리를 항상 함께 표시 (끄려면 false) */
+const TEMP_DEMO_M_L_XL_FISH = true;
 
-function pickPalette(): string {
-  return PALETTE[Math.floor(Math.random() * PALETTE.length)];
+/**
+ * 틴트 레이어 불투명도. 낮출수록(더 투명할수록) 흑백 명암·줄무늬가 잘 보임.
+ * 단색 tintColor 만 쓰면 명암이 거의 사라지므로, 아래에 원본 + 위에 반투명 틴트를 겹침.
+ */
+const FISH_TINT_LAYER_OPACITY = 0.32;
+
+/** 한 구간 이동 시간(ms) — 값이 클수록 느림 (최고 속도 상한을 낮춤) */
+const SWIM_DURATION_MIN = 6000;
+const SWIM_DURATION_SPREAD = 6000;
+
+/** usage_duration(초) → S / M / L / XL */
+function usageSecondsToTier(seconds: number): FishTier {
+  const s = Math.max(0, seconds);
+  if (s < 300) return "s";
+  if (s < 1800) return "m";
+  if (s < 7200) return "l";
+  return "xl";
 }
 
-function pickBubble(): string {
-  return BUBBLE_POOL[Math.floor(Math.random() * BUBBLE_POOL.length)];
+function randomOrbColor(): string {
+  const hue = Math.floor(Math.random() * 360);
+  return `hsl(${hue}, 72%, 52%)`;
 }
 
-function makeId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+function firstStampToMs(v: unknown): number {
+  if (typeof v === "number" && !Number.isNaN(v)) return v;
+  if (typeof v === "string") {
+    const n = Number(v);
+    return Number.isNaN(n) ? 0 : n;
+  }
+  return 0;
 }
 
-function createDolphin(): Dolphin {
-  const size = 20 + Math.floor(Math.random() * 16);
+function isLocalTodayFromEpochMs(ms: number, ref: Date = new Date()): boolean {
+  if (ms <= 0) return false;
+  const d = new Date(ms);
+  return (
+    d.getFullYear() === ref.getFullYear() &&
+    d.getMonth() === ref.getMonth() &&
+    d.getDate() === ref.getDate()
+  );
+}
+
+function makeOrbId(logId: number): string {
+  return `log-${logId}`;
+}
+
+function createOrbFromLog(log: UsageLogRow): SeaOrb {
+  const tier = usageSecondsToTier(log.usage_duration ?? 0);
+  const layoutSize = TIER_LAYOUT_PX[tier];
   return {
-    id: makeId(),
-    x: new Animated.Value(40 + Math.random() * 120),
-    y: new Animated.Value(80 + Math.random() * 120),
-    color: pickPalette(),
-    size,
-    bubbleText: pickBubble(),
+    id: makeOrbId(log.id),
+    x: new Animated.Value(24 + Math.random() * 140),
+    y: new Animated.Value(64 + Math.random() * 140),
+    color: randomOrbColor(),
+    tier,
+    layoutSize,
   };
 }
 
-function getSeaBackgroundColor(hour: number): string {
-  if (hour >= 6 && hour < 12) return "#4A90D9";
-  if (hour >= 12 && hour < 18) return "#2E7FC1";
-  if (hour >= 18 && hour < 22) return "#1B4F8A";
-  return "#0D2E5C";
+/** 임시 데모용 — 티어별로 시작 위치만 살짝 어긋나게 */
+function createDemoOrb(tier: FishTier, slotIndex: number): SeaOrb {
+  const layoutSize = TIER_LAYOUT_PX[tier];
+  return {
+    id: `demo-${tier}-${slotIndex}`,
+    x: new Animated.Value(20 + slotIndex * 72),
+    y: new Animated.Value(72 + slotIndex * 48),
+    color: randomOrbColor(),
+    tier,
+    layoutSize,
+  };
 }
 
-function useDolphinSwim(
-  dolphin: Dolphin,
-  bounds: { w: number; h: number }) {
+function demoMlxOrbs(): SeaOrb[] {
+  return [
+    createDemoOrb("m", 0),
+    createDemoOrb("l", 1),
+    createDemoOrb("xl", 2),
+  ];
+}
+
+function useOrbSwim(orb: SeaOrb, bounds: { w: number; h: number }) {
   const alive = useRef(true);
 
   useEffect(() => {
@@ -91,18 +161,18 @@ function useDolphinSwim(
         setTimeout(run, 120);
         return;
       }
-      const maxX = Math.max(0, w - dolphin.size);
-      const maxY = Math.max(0, h - dolphin.size);
+      const maxX = Math.max(0, w - orb.layoutSize);
+      const maxY = Math.max(0, h - orb.layoutSize);
       const toX = Math.random() * maxX;
       const toY = Math.random() * maxY;
-      const dur = 3000 + Math.random() * 3000;
+      const dur = SWIM_DURATION_MIN + Math.random() * SWIM_DURATION_SPREAD;
       Animated.parallel([
-        Animated.timing(dolphin.x, {
+        Animated.timing(orb.x, {
           toValue: toX,
           duration: dur,
           useNativeDriver: true,
         }),
-        Animated.timing(dolphin.y, {
+        Animated.timing(orb.y, {
           toValue: toY,
           duration: dur,
           useNativeDriver: true,
@@ -115,68 +185,86 @@ function useDolphinSwim(
     return () => {
       alive.current = false;
     };
-  }, [bounds.h, bounds.w, dolphin.id, dolphin.x, dolphin.y]);
+  }, [bounds.h, bounds.w, orb.id, orb.layoutSize, orb.x, orb.y]);
 }
 
-
-function DolphinView({
-  dolphin,
+function OrbView({
+  orb,
   bounds,
 }: {
-  dolphin: Dolphin;
+  orb: SeaOrb;
   bounds: { w: number; h: number };
 }) {
-  useDolphinSwim(dolphin, bounds);
-  const half = dolphin.size / 2;
+  useOrbSwim(orb, bounds);
+  const side = orb.layoutSize;
+  const src = FISH_IMAGE[orb.tier];
   return (
     <Animated.View
+      accessibilityLabel="사용 기록"
       style={[
-        styles.dolphin,
+        styles.fishOrbWrap,
         {
-          width: dolphin.size,
-          height: dolphin.size,
-          borderRadius: half,
-          backgroundColor: dolphin.color,
-          transform: [{ translateX: dolphin.x }, { translateY: dolphin.y }],
+          width: side,
+          height: side,
+          transform: [{ translateX: orb.x }, { translateY: orb.y }],
         },
       ]}
-      accessibilityLabel="돌고래"
     >
-      {dolphin.bubbleText ? (
-        <View style={styles.miniBubble}>
-          <Text style={styles.miniBubbleText} numberOfLines={2}>
-            {dolphin.bubbleText}
-          </Text>
-        </View>
-      ) : null}
+      <Image source={src} style={styles.fishBaseImg} resizeMode="contain" />
+      <Image
+        source={src}
+        resizeMode="contain"
+        style={[
+          styles.fishTintImg,
+          { tintColor: orb.color, opacity: FISH_TINT_LAYER_OPACITY },
+        ]}
+      />
     </Animated.View>
   );
 }
 
 export function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const [hour, setHour] = useState(() => new Date().getHours());
+  const iconRowH = useIconButtonSize(1);
+  const userId = useAuthStore((s) => s.userId);
   const [nickname, setNickname] = useState<string | null>(null);
   const [coins, setCoins] = useState<number | null>(null);
+  const [streakDays, setStreakDays] = useState<number | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
 
   const [seaSize, setSeaSize] = useState({ w: 0, h: 0 });
-  /** TODO: 실제 세션/전역 스토어에서 표시할 돌고래 수 연동 */
-  /** TODO: 세션/전역 스토어와 연동해 표시할 돌고래 수 결정 */
-  const sessionCount = 3;
-  const [dolphins, setDolphins] = useState<Dolphin[]>(() =>
-    Array.from({ length: sessionCount }, () => createDolphin()),
-  );
+  const [orbs, setOrbs] = useState<SeaOrb[]>([]);
 
   const onSeaLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     setSeaSize({ w: width, h: height });
   }, []);
 
-  useEffect(() => {
-    const t = setInterval(() => setHour(new Date().getHours()), 60_000);
-    return () => clearInterval(t);
-  }, []);
+  const loadLogOrbs = useCallback(async () => {
+    const demo = TEMP_DEMO_M_L_XL_FISH ? demoMlxOrbs() : [];
+    if (userId == null) {
+      setOrbs(demo);
+      return;
+    }
+    try {
+      await syncUsageLogsOnDashboardEnter();
+      const rows = await getUsageLogsByUserId(userId);
+      const today = rows.filter((r) =>
+        isLocalTodayFromEpochMs(firstStampToMs(r.first_time_stamp)),
+      );
+      const capped = today.slice(0, MAX_ORBS);
+      const fromLogs = capped.map(createOrbFromLog);
+      setOrbs(TEMP_DEMO_M_L_XL_FISH ? [...demo, ...fromLogs] : fromLogs);
+    } catch {
+      setOrbs(demo);
+    }
+  }, [userId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadLogOrbs();
+    }, [loadLogOrbs]),
+  );
 
   useEffect(() => {
     let alive = true;
@@ -185,11 +273,13 @@ export function HomeScreen({ navigation }: Props) {
         const s = await getUserSummary();
         if (!alive) return;
         setNickname(s.nickname);
-        setCoins(s.coins);
+        setCoins(s.coin);
+        setStreakDays(s.streak_days);
       } catch {
         if (alive) {
           setNickname(null);
           setCoins(null);
+          setStreakDays(null);
         }
       } finally {
         if (alive) setLoadingSummary(false);
@@ -200,139 +290,165 @@ export function HomeScreen({ navigation }: Props) {
     };
   }, []);
 
-  const bg = useMemo(() => getSeaBackgroundColor(hour), [hour]);
-
-  const addDolphin = useCallback(() => {
-    setDolphins((prev) => [...prev, createDolphin()]);
-  }, []);
-
   const bounds = useMemo(
     () => ({ w: seaSize.w, h: seaSize.h }),
     [seaSize.h, seaSize.w],
   );
 
+  /** 상점 + 상점~설정 간격 + 설정(0.5) — 가운데 2줄 영역 높이와 동일 */
+  const HUD_PAD_V = 8;
+  const HUD_GAP_SETTINGS = 6;
+  const HUD_GAP_PROFILE_COIN = 6;
+  const HUD_RIGHT_STACK_H =
+    iconRowH + HUD_GAP_SETTINGS + iconRowH * 0.5;
+  const seaTopOffset = useMemo(
+    () => HUD_PAD_V + HUD_RIGHT_STACK_H + HUD_PAD_V + 4,
+    [iconRowH],
+  );
+
   return (
-    <SafeAreaView
-      style={[styles.safe, { backgroundColor: bg }]}
-      edges={["top", "bottom"]}
-    >
-      {/* TODO: LinearGradient로 시간대별 그라데이션 배경 교체 */}
-      <View style={[styles.hud, { paddingTop: insets.top + 4 }]}>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <ImageBackground
+        source={require("../../../assets/images/home-sea-pixel-bg.png")}
+        style={styles.bgImage}
+        resizeMode="cover"
+      >
+        <View style={styles.bgImageInner}>
+      <View
+        style={[
+          styles.hud,
+          { paddingTop: HUD_PAD_V, paddingBottom: HUD_PAD_V },
+        ]}
+      >
         <View style={styles.hudRow1}>
-          <Pressable
-            style={styles.hudIconBtn}
+          <IconButton
+            source={require("../../../assets/icons/achievements.png")}
             onPress={() => navigation.navigate("Achievements")}
-            accessibilityRole="button"
             accessibilityLabel="업적"
+            sizeScale={1}
+            style={styles.hudLeadingIcon}
+          />
+          <View
+            style={[
+              styles.hudMiddleColumn,
+              {
+                height: iconRowH,
+                gap: HUD_GAP_PROFILE_COIN,
+                alignSelf: "flex-start",
+              },
+            ]}
           >
-            <Text style={styles.hudEmoji}>🌟</Text>
-          </Pressable>
-          <Pressable
-            style={styles.pill}
-            onPress={() => navigation.navigate("Profile")}
-            accessibilityRole="button"
-            accessibilityLabel="프로필"
+            <Pressable
+              style={[styles.pill, styles.hudMiddlePill]}
+              onPress={() => navigation.navigate("Profile")}
+              accessibilityRole="button"
+              accessibilityLabel="프로필"
+            >
+              <AppText style={styles.pillText} numberOfLines={1}>
+                🐬{" "}
+                {loadingSummary ? "-" : nickname ?? "-"}
+                {!loadingSummary &&
+                streakDays != null &&
+                streakDays > 0
+                  ? ` · 🔥${streakDays}`
+                  : ""}
+                </AppText>
+            </Pressable>
+            <View
+              style={[styles.coinsPill, styles.hudMiddlePill]}
+              accessibilityLabel="보유 코인"
+            >
+              <AppText style={styles.pillText} numberOfLines={1}>
+                💰 {loadingSummary ? "-" : coins ?? "-"} 
+              </AppText>
+            </View>
+          </View>
+          <View
+            style={[styles.hudRightCluster, { height: HUD_RIGHT_STACK_H }]}
           >
-            <Text style={styles.pillText}>
-              🐬{" "}
-              {loadingSummary ? "-" : nickname ?? "-"}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={styles.pill}
-            onPress={() => navigation.navigate("Store")}
-            accessibilityRole="button"
-            accessibilityLabel="스토어"
-          >
-            <Text style={styles.pillText}>
-              💰 {loadingSummary ? "-" : coins ?? "-"}B
-            </Text>
-          </Pressable>
-          <Pressable
-            style={styles.hudIconBtn}
-            onPress={() => navigation.navigate("Calendar")}
-            accessibilityRole="button"
-            accessibilityLabel="캘린더"
-          >
-            <Text style={styles.hudEmoji}>📅</Text>
-          </Pressable>
-        </View>
-        <View style={styles.hudRow2}>
-          <View style={styles.hudRow2Spacer} />
-          <Pressable
-            style={styles.hudIconBtn}
-            onPress={() => navigation.navigate("Social")}
-            accessibilityRole="button"
-            accessibilityLabel="소셜"
-          >
-            <Text style={styles.hudEmoji}>👥</Text>
-          </Pressable>
-          <Pressable
-            style={styles.hudIconBtn}
-            onPress={() => navigation.navigate("Settings")}
-            accessibilityRole="button"
-            accessibilityLabel="설정"
-          >
-            <Text style={styles.hudEmoji}>⚙️</Text>
-          </Pressable>
+            <View style={styles.hudRightIconsRow}>
+              <IconButton
+                source={require("../../../assets/icons/social.png")}
+                onPress={() => navigation.navigate("Social")}
+                accessibilityLabel="소셜"
+                sizeScale={1}
+                style={styles.hudTrailingIcon}
+              />
+              <View style={styles.hudShopColumn}>
+                <IconButton
+                  source={require("../../../assets/icons/store.png")}
+                  onPress={() => navigation.navigate("Store")}
+                  accessibilityLabel="상점"
+                  sizeScale={1}
+                  style={styles.hudStoreIcon}
+                />
+                <View
+                  style={[
+                    styles.hudSettingsUnderShop,
+                    { marginTop: HUD_GAP_SETTINGS },
+                  ]}
+                >
+                  <IconButton
+                    source={require("../../../assets/icons/settings.png")}
+                    onPress={() => navigation.navigate("Settings")}
+                    accessibilityLabel="설정"
+                    sizeScale={0.5}
+                  />
+                </View>
+              </View>
+            </View>
+          </View>
         </View>
       </View>
 
       <View
-        style={[styles.sea, { marginTop: insets.top + 88 }]}
+        style={[styles.sea, { marginTop: seaTopOffset }]}
         onLayout={onSeaLayout}
       >
-        {dolphins.map((d) => (
-          <DolphinView key={d.id} dolphin={d} bounds={bounds} />
+        {orbs.map((o) => (
+          <OrbView key={o.id} orb={o} bounds={bounds} />
         ))}
 
         <View style={styles.checkinRow}>
-          <View style={styles.checkinBubble}>
-            <Text style={styles.checkinBubbleText}>오늘 어땠나요?</Text>
-          </View>
-          <Pressable
-            style={styles.checkinBtn}
+          <IconButton
+            source={require("../../../assets/icons/checkin.png")}
             onPress={() => navigation.navigate("CheckinIntro")}
-            accessibilityRole="button"
             accessibilityLabel="체크인"
-          >
-            <Text style={styles.checkinBtnIcon}>💬</Text>
-          </Pressable>
+            sizeScale={0.75}
+            style={styles.checkinIconBtn}
+          />
         </View>
-
-        {/* TODO: 테스트용 — 배포 전 제거 */}
-        <Pressable
-          style={styles.addFab}
-          onPress={addDolphin}
-          accessibilityRole="button"
-          accessibilityLabel="돌고래 추가 (테스트)"
-        >
-          <Text style={styles.addFabText}>+</Text>
-        </Pressable>
       </View>
 
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-        <Pressable
-          style={styles.bottomBtn}
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <IconButton
+          source={require("../../../assets/icons/dashboard.png")}
           onPress={() => navigation.navigate("Dashboard")}
-          accessibilityRole="button"
-        >
-          <Text style={styles.bottomBtnText}>📊 대시보드</Text>
-        </Pressable>
-        <Pressable
-          style={styles.bottomBtn}
+          accessibilityLabel="대시보드"
+          style={styles.footerIconLeft}
+        />
+        <IconButton
+          source={require("../../../assets/icons/calendar.png")}
           onPress={() => navigation.navigate("Calendar")}
-          accessibilityRole="button"
-        >
-          <Text style={styles.bottomBtnText}>📅 캘린더</Text>
-        </Pressable>
+          accessibilityLabel="캘린더"
+          style={styles.footerIconRight}
+        />
       </View>
+        </View>
+      </ImageBackground>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  bgImage: {
+    flex: 1,
+  },
+  bgImageInner: {
     flex: 1,
   },
   hud: {
@@ -342,113 +458,94 @@ const styles = StyleSheet.create({
     top: 0,
     zIndex: 10,
     paddingHorizontal: 12,
-    paddingBottom: 8,
   },
   hudRow1: {
     flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
+    alignItems: "flex-start",
+    flexWrap: "nowrap",
     gap: 8,
   },
-  hudRow2: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    marginTop: 8,
-    gap: 8,
-  },
-  hudRow2Spacer: {
+  hudMiddleColumn: {
     flex: 1,
+    minWidth: 0,
+    flexDirection: "column",
   },
-  hudIconBtn: {
-    padding: 6,
+  hudMiddlePill: {
+    flex: 1,
+    minHeight: 0,
+    paddingVertical: 0,
+    justifyContent: "center",
+    maxWidth: "100%",
   },
-  hudEmoji: {
-    fontSize: 22,
+  coinsPill: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 14,
+    paddingHorizontal: 12,
+  },
+  hudLeadingIcon: {
+    flexShrink: 0,
+  },
+  hudTrailingIcon: {
+    flexShrink: 0,
+  },
+  hudRightCluster: {
+    flexShrink: 0,
+  },
+  hudRightIconsRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "flex-end",
+    gap: 8,
+  },
+  hudShopColumn: {
+    alignItems: "stretch",
+  },
+  hudStoreIcon: {
+    alignSelf: "center",
+    flexShrink: 0,
+  },
+  hudSettingsUnderShop: {
+    alignSelf: "stretch",
+    alignItems: "flex-end",
   },
   pill: {
     backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 20,
-    paddingVertical: 6,
+    borderRadius: 14,
     paddingHorizontal: 12,
-    maxWidth: 140,
+    flexShrink: 1,
+    minWidth: 0,
   },
   pillText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
+    color: "#000000",
+    fontSize: 16,
   },
   sea: {
     flex: 1,
     position: "relative",
   },
-  dolphin: {
+  fishOrbWrap: {
     position: "absolute",
     left: 0,
     top: 0,
   },
-  miniBubble: {
-    position: "absolute",
-    bottom: "100%",
-    marginBottom: 4,
-    alignSelf: "center",
-    marginLeft: -20,
-    maxWidth: 120,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 8,
+  fishBaseImg: {
+    width: "100%",
+    height: "100%",
   },
-  miniBubbleText: {
-    fontSize: 10,
-    color: "#333333",
+  fishTintImg: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
   },
   checkinRow: {
     position: "absolute",
     right: 24,
     top: "38%",
-    flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-  },
-  checkinBubble: {
-    backgroundColor: "rgba(255,255,255,0.95)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    maxWidth: 160,
-  },
-  checkinBubbleText: {
-    fontSize: 14,
-    color: "#333333",
-    fontWeight: "600",
-  },
-  checkinBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#FF8C42",
     justifyContent: "center",
-    alignItems: "center",
   },
-  checkinBtnIcon: {
-    fontSize: 22,
-  },
-  addFab: {
-    position: "absolute",
-    right: 16,
-    bottom: 100,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.35)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  addFabText: {
-    fontSize: 24,
-    color: "#FFFFFF",
-    fontWeight: "700",
+  checkinIconBtn: {
+    flexShrink: 0,
   },
   bottomBar: {
     position: "absolute",
@@ -457,21 +554,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    backgroundColor: "rgba(0,0,0,0.3)",
+    alignItems: "flex-end",
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    backgroundColor: "transparent",
   },
-  bottomBtn: {
-    flex: 1,
-    marginHorizontal: 8,
-    paddingVertical: 12,
-    alignItems: "center",
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.15)",
+  footerIconLeft: {
+    alignSelf: "flex-end",
   },
-  bottomBtnText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "600",
+  footerIconRight: {
+    alignSelf: "flex-end",
   },
 });

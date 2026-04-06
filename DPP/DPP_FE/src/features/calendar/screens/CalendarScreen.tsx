@@ -1,14 +1,6 @@
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  Easing,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Animated, Easing, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
@@ -209,29 +201,29 @@ export function CalendarScreen({ navigation }: Props) {
           accessibilityRole="button"
           accessibilityLabel="뒤로"
         >
-          <Text style={styles.back}>←</Text>
+          <AppText style={styles.back}>←</AppText>
         </Pressable>
-        <Text style={styles.headerTitle}>기록 보관함</Text>
+        <AppText style={styles.headerTitle}>기록 보관함</AppText>
         <View style={styles.backWrap} />
       </View>
 
       <View style={styles.monthNav}>
         <Pressable onPress={prevMonth} style={styles.monthArrow} hitSlop={8}>
-          <Text style={styles.monthArrowText}>{"<"}</Text>
+          <AppText style={styles.monthArrowText}>{"<"}</AppText>
         </Pressable>
-        <Text style={styles.monthLabel}>
+        <AppText style={styles.monthLabel}>
           {cursor.y}년 {cursor.m}월
-        </Text>
+        </AppText>
         <Pressable onPress={nextMonth} style={styles.monthArrow} hitSlop={8}>
-          <Text style={styles.monthArrowText}>{">"}</Text>
+          <AppText style={styles.monthArrowText}>{">"}</AppText>
         </Pressable>
       </View>
 
       <View style={styles.weekHeader}>
         {WEEKDAYS.map((w) => (
-          <Text key={w} style={styles.weekHeaderCell}>
+          <AppText key={w} style={styles.weekHeaderCell}>
             {w}
-          </Text>
+          </AppText>
         ))}
       </View>
 
@@ -282,7 +274,7 @@ export function CalendarScreen({ navigation }: Props) {
                           selected && styles.daySelected,
                         ]}
                       >
-                        <Text
+                        <AppText
                           style={[
                             styles.dayNum,
                             isToday && styles.dayNumToday,
@@ -290,7 +282,7 @@ export function CalendarScreen({ navigation }: Props) {
                           ]}
                         >
                           {cell.getDate()}
-                        </Text>
+                        </AppText>
                         {meta?.has_daily_report ? (
                           <View style={styles.dot} />
                         ) : (
@@ -319,18 +311,18 @@ export function CalendarScreen({ navigation }: Props) {
             contentContainerStyle={styles.panelScroll}
           >
             <View style={styles.card}>
-              <Text style={styles.cardEmoji}>📅</Text>
-              <Text style={styles.cardTitle}>
+              <AppText style={styles.cardEmoji}>📅</AppText>
+              <AppText style={styles.cardTitle}>
                 {selectedMeta.d.getMonth() + 1}월 {selectedMeta.d.getDate()}일
                 {selectedMeta.info?.has_daily_report
                   ? " 일간 리포트"
                   : ""}
-              </Text>
+              </AppText>
               {selectedMeta.info?.has_daily_report ? (
                 <>
-                  <Text style={styles.cardSummary} numberOfLines={2}>
+                  <AppText style={styles.cardSummary} numberOfLines={2}>
                     {MOCK_CARD_DAILY_SUMMARY}
-                  </Text>
+                  </AppText>
                   <Pressable
                     onPress={() =>
                       navigation.navigate("DailyReport", {
@@ -339,27 +331,27 @@ export function CalendarScreen({ navigation }: Props) {
                     }
                     style={styles.cardLink}
                   >
-                    <Text style={styles.cardLinkText}>자세히 보기 →</Text>
+                    <AppText style={styles.cardLinkText}>자세히 보기 →</AppText>
                   </Pressable>
                 </>
               ) : (
-                <Text style={styles.cardEmpty}>아직 기록이 없어요</Text>
+                <AppText style={styles.cardEmpty}>아직 기록이 없어요</AppText>
               )}
             </View>
 
             <View style={[styles.card, { marginTop: CARD_GAP }]}>
-              <Text style={styles.cardEmoji}>📊</Text>
-              <Text style={styles.cardTitle}>
+              <AppText style={styles.cardEmoji}>📊</AppText>
+              <AppText style={styles.cardTitle}>
                 {selectedMeta.d.getMonth() + 1}월 {selectedMeta.weekNum}주차
                 {selectedMeta.info?.has_weekly_report
                   ? " 주간 리포트"
                   : ""}
-              </Text>
+              </AppText>
               {selectedMeta.info?.has_weekly_report ? (
                 <>
-                  <Text style={styles.cardSummary}>
+                  <AppText style={styles.cardSummary}>
                     {MOCK_CARD_WEEKLY_LINE}
-                  </Text>
+                  </AppText>
                   <Pressable
                     onPress={() =>
                       navigation.navigate("WeeklyReport", {
@@ -370,11 +362,11 @@ export function CalendarScreen({ navigation }: Props) {
                     }
                     style={styles.cardLink}
                   >
-                    <Text style={styles.cardLinkText}>자세히 보기 →</Text>
+                    <AppText style={styles.cardLinkText}>자세히 보기 →</AppText>
                   </Pressable>
                 </>
               ) : (
-                <Text style={styles.cardEmpty}>아직 기록이 없어요</Text>
+                <AppText style={styles.cardEmpty}>아직 기록이 없어요</AppText>
               )}
             </View>
           </ScrollView>
@@ -407,7 +399,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     fontSize: 17,
-    fontWeight: "700",
+
     color: "#1A1A2E",
   },
   monthNav: {
@@ -424,11 +416,11 @@ const styles = StyleSheet.create({
   monthArrowText: {
     fontSize: 20,
     color: MAIN,
-    fontWeight: "700",
+
   },
   monthLabel: {
     fontSize: 18,
-    fontWeight: "700",
+
     color: "#1A1A2E",
     minWidth: 120,
     textAlign: "center",
@@ -443,7 +435,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 12,
     color: "#888888",
-    fontWeight: "600",
+
   },
   gridScroll: {
     flex: 1,
@@ -491,7 +483,7 @@ const styles = StyleSheet.create({
   },
   dayNum: {
     fontSize: 15,
-    fontWeight: "600",
+
   },
   dayNumToday: {
     color: "#FFFFFF",
@@ -545,7 +537,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: "700",
+
     color: "#1A1A2E",
     marginBottom: 8,
   },
@@ -564,7 +556,7 @@ const styles = StyleSheet.create({
   },
   cardLinkText: {
     fontSize: 15,
-    fontWeight: "600",
+
     color: MAIN,
   },
 });

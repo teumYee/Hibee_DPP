@@ -1,14 +1,7 @@
 // 나의 바다 기록 — TODO: getAchievements / getUserLevel 실패 시 목 데이터 대신 에러 UI·재시도
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
@@ -173,9 +166,9 @@ export function AchievementsScreen({ navigation }: Props) {
           accessibilityRole="button"
           accessibilityLabel="뒤로"
         >
-          <Text style={styles.back}>←</Text>
+          <AppText style={styles.back}>←</AppText>
         </Pressable>
-        <Text style={styles.topTitle}>나의 바다 기록</Text>
+        <AppText style={styles.topTitle}>나의 바다 기록</AppText>
         <View style={styles.topSpacer} />
       </View>
 
@@ -187,21 +180,21 @@ export function AchievementsScreen({ navigation }: Props) {
           <View style={styles.heroTint} />
           <View style={styles.heroInner}>
             <View style={styles.dolphinCircle} />
-            <Text style={styles.heroTitle}>{level.title}</Text>
-            <Text style={styles.heroSub}>
+            <AppText style={styles.heroTitle}>{level.title}</AppText>
+            <AppText style={styles.heroSub}>
               이제 절반 줄 수 있는 만큼 모으고 있어요 준비 시작해요
-            </Text>
+            </AppText>
             <View style={styles.lvPill}>
-              <Text style={styles.lvPillText}>LV.{level.level}</Text>
+              <AppText style={styles.lvPillText}>LV.{level.level}</AppText>
             </View>
           </View>
         </View>
 
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>여정의 기록</Text>
-          <Text style={styles.sectionCount}>
+          <AppText style={styles.sectionTitle}>여정의 기록</AppText>
+          <AppText style={styles.sectionCount}>
             {achievements.length}개의 기억
-          </Text>
+          </AppText>
         </View>
 
         {loading ? (
@@ -224,17 +217,17 @@ export function AchievementsScreen({ navigation }: Props) {
                   accessibilityLabel={item.name}
                 >
                   {!earned ? (
-                    <Text style={styles.lockMark}>🔒</Text>
+                    <AppText style={styles.lockMark}>🔒</AppText>
                   ) : null}
-                  <Text
+                  <AppText
                     style={[
                       styles.cardIcon,
                       !earned && styles.cardIconMuted,
                     ]}
                   >
                     {item.icon}
-                  </Text>
-                  <Text
+                  </AppText>
+                  <AppText
                     style={[
                       styles.cardName,
                       !earned && styles.cardNameMuted,
@@ -242,7 +235,7 @@ export function AchievementsScreen({ navigation }: Props) {
                     numberOfLines={2}
                   >
                     {item.name}
-                  </Text>
+                  </AppText>
                 </Pressable>
               );
             })}
@@ -273,7 +266,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     fontSize: 17,
-    fontWeight: "700",
     color: "#111111",
   },
   topSpacer: {
@@ -307,7 +299,6 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontSize: 20,
-    fontWeight: "700",
     color: "#FFFFFF",
     textAlign: "center",
     marginBottom: 8,
@@ -327,7 +318,6 @@ const styles = StyleSheet.create({
   },
   lvPillText: {
     fontSize: 13,
-    fontWeight: "700",
     color: "#FFFFFF",
   },
   sectionHead: {
@@ -339,12 +329,10 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 17,
-    fontWeight: "700",
     color: "#111111",
   },
   sectionCount: {
     fontSize: 14,
-    fontWeight: "600",
     color: "#2E7FC1",
   },
   loader: {
@@ -381,7 +369,6 @@ const styles = StyleSheet.create({
   },
   cardName: {
     fontSize: 12,
-    fontWeight: "700",
     color: "#111111",
     textAlign: "center",
   },

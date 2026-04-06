@@ -1,16 +1,6 @@
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  Dimensions,
-  FlatList,
-  Image,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Animated, Dimensions, FlatList, Image, Modal, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
@@ -167,7 +157,7 @@ export function StoreScreen({ navigation }: Props) {
       setSummaryLoading(true);
       try {
         const s = await getUserSummary();
-        if (alive) setCoins(s.coins);
+        if (alive) setCoins(s.coin);
       } catch {
         if (alive) setCoins(0);
       } finally {
@@ -300,15 +290,15 @@ export function StoreScreen({ navigation }: Props) {
                 resizeMode="contain"
               />
             ) : (
-              <Text style={styles.itemEmoji}>{categoryEmoji(item.category)}</Text>
+              <AppText style={styles.itemEmoji}>{categoryEmoji(item.category)}</AppText>
             )}
           </View>
-          <Text style={styles.itemName} numberOfLines={2}>
+          <AppText style={styles.itemName} numberOfLines={2}>
             {item.name}
-          </Text>
+          </AppText>
           {owned ? (
             <View style={[styles.pricePill, styles.pillOwned]}>
-              <Text style={styles.pillOwnedText}>보유중</Text>
+              <AppText style={styles.pillOwnedText}>보유중</AppText>
             </View>
           ) : (
             <View
@@ -318,14 +308,14 @@ export function StoreScreen({ navigation }: Props) {
                 !affordable && styles.pillDisabled,
               ]}
             >
-              <Text
+              <AppText
                 style={[
                   styles.pillBuyText,
                   !affordable && styles.pillBuyTextMuted,
                 ]}
               >
                 💰 {item.price}
-              </Text>
+              </AppText>
             </View>
           )}
         </Pressable>
@@ -344,9 +334,9 @@ export function StoreScreen({ navigation }: Props) {
           accessibilityRole="button"
           accessibilityLabel="뒤로"
         >
-          <Text style={styles.back}>←</Text>
+          <AppText style={styles.back}>←</AppText>
         </Pressable>
-        <Text style={styles.headerTitle}>꾸미기 상점</Text>
+        <AppText style={styles.headerTitle}>꾸미기 상점</AppText>
         <Animated.View
           style={[styles.coinPillWrap, { transform: [{ translateX: coinShake }] }]}
         >
@@ -354,7 +344,7 @@ export function StoreScreen({ navigation }: Props) {
             {summaryLoading ? (
               <ActivityIndicator size="small" color={TITLE} />
             ) : (
-              <Text style={styles.coinPillText}>💰 {coins}</Text>
+              <AppText style={styles.coinPillText}>💰 {coins}</AppText>
             )}
           </View>
         </Animated.View>
@@ -363,9 +353,9 @@ export function StoreScreen({ navigation }: Props) {
       <View style={styles.preview}>
         {/* TODO: 실제 캐릭터 이미지로 교체 */}
         <View style={styles.previewBubble}>
-          <Text style={styles.previewEmoji}>🐬</Text>
+          <AppText style={styles.previewEmoji}>🐬</AppText>
         </View>
-        <Text style={styles.previewCaption}>내 드롭핀 꾸미기</Text>
+        <AppText style={styles.previewCaption}>내 드롭핀 꾸미기</AppText>
       </View>
 
       <View style={styles.tabRow}>
@@ -377,9 +367,9 @@ export function StoreScreen({ navigation }: Props) {
               style={[styles.tab, on ? styles.tabOn : styles.tabOff]}
               onPress={() => setActiveCategory(t.key)}
             >
-              <Text style={[styles.tabText, on ? styles.tabTextOn : styles.tabTextOff]}>
+              <AppText style={[styles.tabText, on ? styles.tabTextOn : styles.tabTextOff]}>
                 {t.label}
-              </Text>
+              </AppText>
             </Pressable>
           );
         })}
@@ -387,7 +377,7 @@ export function StoreScreen({ navigation }: Props) {
 
       {filtered.length === 0 ? (
         <View style={styles.emptyWrap}>
-          <Text style={styles.emptyText}>이 카테고리에는 아직 상품이 없어요</Text>
+          <AppText style={styles.emptyText}>이 카테고리에는 아직 상품이 없어요</AppText>
         </View>
       ) : (
         <FlatList
@@ -412,18 +402,18 @@ export function StoreScreen({ navigation }: Props) {
           <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetY }] }]}>
             {purchaseTarget ? (
               <>
-                <Text style={styles.sheetTitle}>{purchaseTarget.name}</Text>
-                <Text style={styles.sheetQuestion}>
+                <AppText style={styles.sheetTitle}>{purchaseTarget.name}</AppText>
+                <AppText style={styles.sheetQuestion}>
                   💰 {purchaseTarget.price}코인을 사용할까요?
-                </Text>
-                <Text style={styles.sheetCoins}>현재 {coins}코인 보유중</Text>
+                </AppText>
+                <AppText style={styles.sheetCoins}>현재 {coins}코인 보유중</AppText>
                 <View style={styles.sheetActions}>
                   <Pressable
                     style={[styles.sheetBtn, styles.sheetBtnGray]}
                     onPress={closeModal}
                     disabled={purchaseLoading}
                   >
-                    <Text style={styles.sheetBtnGrayText}>취소</Text>
+                    <AppText style={styles.sheetBtnGrayText}>취소</AppText>
                   </Pressable>
                   <Pressable
                     style={[styles.sheetBtn, styles.sheetBtnBlue]}
@@ -433,7 +423,7 @@ export function StoreScreen({ navigation }: Props) {
                     {purchaseLoading ? (
                       <ActivityIndicator color="#FFFFFF" />
                     ) : (
-                      <Text style={styles.sheetBtnBlueText}>구매하기</Text>
+                      <AppText style={styles.sheetBtnBlueText}>구매하기</AppText>
                     )}
                   </Pressable>
                 </View>
@@ -454,7 +444,7 @@ export function StoreScreen({ navigation }: Props) {
           ]}
           pointerEvents="none"
         >
-          <Text style={styles.toastText}>{toastMsg}</Text>
+          <AppText style={styles.toastText}>{toastMsg}</AppText>
         </Animated.View>
       ) : null}
     </SafeAreaView>
@@ -484,7 +474,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     fontSize: 17,
-    fontWeight: "700",
     color: TITLE,
   },
   coinPillWrap: {
@@ -502,7 +491,6 @@ const styles = StyleSheet.create({
   },
   coinPillText: {
     fontSize: 14,
-    fontWeight: "700",
     color: TITLE,
   },
   preview: {
@@ -552,7 +540,6 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 13,
-    fontWeight: "600",
   },
   tabTextOn: {
     color: "#FFFFFF",
@@ -596,7 +583,6 @@ const styles = StyleSheet.create({
   },
   itemName: {
     fontSize: 13,
-    fontWeight: "600",
     color: TITLE,
     textAlign: "center",
     minHeight: 36,
@@ -614,14 +600,12 @@ const styles = StyleSheet.create({
   pillOwnedText: {
     color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: "700",
   },
   pillBuy: {
     backgroundColor: GOLD,
   },
   pillBuyText: {
     fontSize: 12,
-    fontWeight: "700",
     color: TITLE,
   },
   pillDisabled: {
@@ -660,7 +644,6 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     fontSize: 20,
-    fontWeight: "700",
     color: TITLE,
     marginBottom: 12,
   },
@@ -691,7 +674,6 @@ const styles = StyleSheet.create({
   },
   sheetBtnGrayText: {
     fontSize: 16,
-    fontWeight: "700",
     color: "#555555",
   },
   sheetBtnBlue: {
@@ -700,7 +682,6 @@ const styles = StyleSheet.create({
   },
   sheetBtnBlueText: {
     fontSize: 16,
-    fontWeight: "700",
     color: "#FFFFFF",
   },
   toast: {
@@ -717,6 +698,5 @@ const styles = StyleSheet.create({
   toastText: {
     color: "#FFFFFF",
     fontSize: 15,
-    fontWeight: "600",
   },
 });

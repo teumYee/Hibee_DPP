@@ -1,12 +1,6 @@
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useState } from "react";
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -119,9 +113,9 @@ export function CheckinPatternScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.emptyWrap}>
-          <Text style={styles.emptyText}>표시할 패턴이 없어요</Text>
+          <AppText style={styles.emptyText}>표시할 패턴이 없어요</AppText>
           <Pressable onPress={() => navigation.goBack()} style={styles.emptyBack}>
-            <Text style={styles.emptyBackLabel}>돌아가기</Text>
+            <AppText style={styles.emptyBackLabel}>돌아가기</AppText>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -137,9 +131,9 @@ export function CheckinPatternScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.progressLabel}>
+        <AppText style={styles.progressLabel}>
           {currentIndex + 1} / {patterns.length}
-        </Text>
+        </AppText>
         <View style={styles.progressTrack}>
           <View
             style={[styles.progressFill, { width: `${progress * 100}%` }]}
@@ -157,15 +151,15 @@ export function CheckinPatternScreen() {
                 key={tag}
                 style={[styles.tagPill, i > 0 && styles.tagPillGap]}
               >
-                <Text style={styles.tagText}>{tag}</Text>
+                <AppText style={styles.tagText}>{tag}</AppText>
               </View>
             ))}
           </ScrollView>
-          <Text style={styles.label}>{currentPattern.label}</Text>
-          <Text style={styles.observation}>{currentPattern.observation}</Text>
-          <Text style={styles.interpretation}>
+          <AppText style={styles.label}>{currentPattern.label}</AppText>
+          <AppText style={styles.observation}>{currentPattern.observation}</AppText>
+          <AppText style={styles.interpretation}>
             {currentPattern.interpretation}
-          </Text>
+          </AppText>
         </View>
 
         <View style={styles.kptBlock}>
@@ -194,18 +188,18 @@ export function CheckinPatternScreen() {
         </View>
 
         <Pressable style={styles.skipTextBtn} onPress={onSkipPattern}>
-          <Text style={styles.skipText}>이 패턴은 해당 없어요</Text>
+          <AppText style={styles.skipText}>이 패턴은 해당 없어요</AppText>
         </Pressable>
       </ScrollView>
 
       <View style={styles.bottomBar}>
         <Pressable style={styles.prevBtn} onPress={onPrev}>
-          <Text style={styles.prevLabel}>이전으로</Text>
+          <AppText style={styles.prevLabel}>이전으로</AppText>
         </Pressable>
         <Pressable style={styles.mainBtn} onPress={onNext}>
-          <Text style={styles.mainBtnLabel}>
+          <AppText style={styles.mainBtnLabel}>
             {isLast ? "완료하기" : "다음으로"}
-          </Text>
+          </AppText>
         </Pressable>
       </View>
 
@@ -223,22 +217,22 @@ export function CheckinPatternScreen() {
             accessibilityLabel="닫기"
           />
           <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>이미 3개를 선택했어요</Text>
-            <Text style={styles.modalSubtitle}>
+            <AppText style={styles.modalTitle}>이미 3개를 선택했어요</AppText>
+            <AppText style={styles.modalSubtitle}>
               이전 선택을 해제하고 이걸로 바꿀까요?
-            </Text>
+            </AppText>
             {selected.map((item) => (
               <View key={item.candidate_id} style={styles.modalRow}>
-                <Text style={styles.modalRowLabel} numberOfLines={1}>
+                <AppText style={styles.modalRowLabel} numberOfLines={1}>
                   {item.label}
-                </Text>
+                </AppText>
                 <Pressable
                   onPress={() => removeFromSelected(item.candidate_id)}
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel={`${item.label} 선택 해제`}
                 >
-                  <Text style={styles.modalX}>✕</Text>
+                  <AppText style={styles.modalX}>✕</AppText>
                 </Pressable>
               </View>
             ))}
@@ -246,7 +240,7 @@ export function CheckinPatternScreen() {
               style={styles.modalCancel}
               onPress={() => setLimitModalVisible(false)}
             >
-              <Text style={styles.modalCancelLabel}>취소</Text>
+              <AppText style={styles.modalCancelLabel}>취소</AppText>
             </Pressable>
           </View>
         </View>
@@ -282,22 +276,22 @@ function KptButton({
           : { backgroundColor: "rgba(255,255,255,0.1)" },
       ]}
     >
-      <Text
+      <AppText
         style={[
           styles.kptTitle,
           selected && selectedTextDark ? styles.kptTitleDark : undefined,
         ]}
       >
         {title}
-      </Text>
-      <Text
+      </AppText>
+      <AppText
         style={[
           styles.kptSub,
           selected && selectedTextDark ? styles.kptSubDark : undefined,
         ]}
       >
         {subtitle}
-      </Text>
+      </AppText>
     </Pressable>
   );
 }
@@ -318,7 +312,6 @@ const styles = StyleSheet.create({
   progressLabel: {
     color: "#FFFFFF",
     fontSize: 15,
-    fontWeight: "600",
     textAlign: "center",
     marginBottom: 8,
   },
@@ -365,7 +358,6 @@ const styles = StyleSheet.create({
   },
   kptTitle: {
     fontSize: 16,
-    fontWeight: "700",
     color: "#FFFFFF",
   },
   kptTitleDark: {
@@ -387,7 +379,6 @@ const styles = StyleSheet.create({
   label: {
     color: "#FFFFFF",
     fontSize: 22,
-    fontWeight: "700",
     marginBottom: 10,
   },
   observation: {
@@ -439,7 +430,6 @@ const styles = StyleSheet.create({
   mainBtnLabel: {
     color: "#2E7FC1",
     fontSize: 17,
-    fontWeight: "700",
   },
   emptyWrap: {
     flex: 1,
@@ -483,7 +473,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: "700",
     marginBottom: 10,
   },
   modalSubtitle: {
@@ -519,6 +508,5 @@ const styles = StyleSheet.create({
   modalCancelLabel: {
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
   },
 });

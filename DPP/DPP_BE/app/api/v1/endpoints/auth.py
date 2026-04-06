@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.jwt_tokens import create_access_token
 from app.models.user import Users
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -38,13 +39,17 @@ def google_login(token_data: dict, db: Session = Depends(get_db)):
             db.commit()
             db.refresh(user)
 
-        # 4. 유저 정보 반환 (프론트에서 이 ID를 기억했다가 로그 저장 시 사용)
+        # 4. 유저 정보 + 앱 API용 JWT (Authorization Bearer — Google ID 토큰 대신 장기 사용)
+        access_token = create_access_token(user.id, user.email or "")
         return {
             "id": user.id,
             "email": user.email,
             "nickname": user.nickname,
-            "message": "로그인 성공"
+            "message": "로그인 성공",
+            "access_token": access_token,
+            "token_type": "bearer",
         }
 
-    except ValueError:
+    except ValueError as e:
+        print(f"토큰 검증 실패: {e}")
         raise HTTPException(status_code=400, detail="유효하지 않은 구글 토큰입니다.")

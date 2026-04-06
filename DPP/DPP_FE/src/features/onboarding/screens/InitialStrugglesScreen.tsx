@@ -1,12 +1,7 @@
 // 어려움 선택
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { OnboardingStackParamList } from "../../../navigation/types";
 import { useAuthStore } from "../../../store/auth.store";
@@ -91,7 +86,7 @@ export function InitialStrugglesScreen({ navigation }: Props) {
       onBack={() => navigation.goBack()}
       headerRight={
         <Pressable onPress={onSkip} hitSlop={8} accessibilityRole="button">
-          <Text style={styles.skipText}>건너뛰기</Text>
+          <AppText style={styles.skipText}>건너뛰기</AppText>
         </Pressable>
       }
       footer={
@@ -109,7 +104,7 @@ export function InitialStrugglesScreen({ navigation }: Props) {
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.primaryBtnText}>다음으로</Text>
+            <AppText style={styles.primaryBtnText}>다음으로</AppText>
           )}
         </Pressable>
       }
@@ -132,9 +127,9 @@ export function InitialStrugglesScreen({ navigation }: Props) {
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}
             >
-              <Text style={[styles.rowText, on && styles.rowTextOn]}>
+              <AppText style={[styles.rowText, on && styles.rowTextOn]}>
                 {opt.label}
-              </Text>
+              </AppText>
             </Pressable>
           );
         })}
@@ -173,7 +168,6 @@ const styles = StyleSheet.create({
   },
   rowTextOn: {
     color: "#111111",
-    fontWeight: "600",
   },
   primaryBtn: {
     backgroundColor: MAIN,
@@ -190,11 +184,9 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: "700",
   },
   skipText: {
     color: SKIP,
     fontSize: 14,
-    fontWeight: "600",
   },
 });

@@ -1,13 +1,6 @@
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
@@ -68,16 +61,16 @@ export function CheckinCompleteScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.iconCircle}>
-          <Text style={styles.iconEmoji}>✨</Text>
+          <AppText style={styles.iconEmoji}>✨</AppText>
         </View>
-        <Text style={styles.title}>오늘의 기록을{"\n"}정리했어요</Text>
-        <Text style={styles.subtitle}>
+        <AppText style={styles.title}>오늘의 기록을{"\n"}정리했어요</AppText>
+        <AppText style={styles.subtitle}>
           함께 돌아본 오늘의 흐름을{"\n"}바탕으로 리포트를 준비할게요
-        </Text>
+        </AppText>
 
         <View style={styles.summary}>
           {selected.length === 0 ? (
-            <Text style={styles.passText}>오늘은 패스했어요</Text>
+            <AppText style={styles.passText}>오늘은 패스했어요</AppText>
           ) : (
             selected.map((item) => {
               const pill = kptPillStyle(item.kpt);
@@ -89,17 +82,17 @@ export function CheckinCompleteScreen({ navigation, route }: Props) {
                       { backgroundColor: pill.backgroundColor },
                     ]}
                   >
-                    <Text style={[styles.kptPillText, { color: pill.textColor }]}>
+                    <AppText style={[styles.kptPillText, { color: pill.textColor }]}>
                       {item.kpt === "keep"
                         ? "이어가기"
                         : item.kpt === "problem"
                           ? "고치기"
                           : "바꾸기"}
-                    </Text>
+                    </AppText>
                   </View>
-                  <Text style={styles.summaryLabel} numberOfLines={2}>
+                  <AppText style={styles.summaryLabel} numberOfLines={2}>
                     {item.label}
-                  </Text>
+                  </AppText>
                 </View>
               );
             })
@@ -118,7 +111,7 @@ export function CheckinCompleteScreen({ navigation, route }: Props) {
           {submitting ? (
             <ActivityIndicator color="#2E7FC1" />
           ) : (
-            <Text style={styles.doneLabel}>완료</Text>
+            <AppText style={styles.doneLabel}>완료</AppText>
           )}
         </Pressable>
       </View>
@@ -153,7 +146,6 @@ const styles = StyleSheet.create({
   title: {
     color: "#FFFFFF",
     fontSize: 28,
-    fontWeight: "700",
     textAlign: "center",
     lineHeight: 36,
     marginBottom: 16,
@@ -180,13 +172,11 @@ const styles = StyleSheet.create({
   },
   kptPillText: {
     fontSize: 12,
-    fontWeight: "700",
   },
   summaryLabel: {
     flex: 1,
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
     minWidth: 120,
   },
   passText: {
@@ -212,6 +202,5 @@ const styles = StyleSheet.create({
   doneLabel: {
     color: "#2E7FC1",
     fontSize: 17,
-    fontWeight: "700",
   },
 });

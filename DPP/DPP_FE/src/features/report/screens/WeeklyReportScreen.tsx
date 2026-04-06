@@ -1,12 +1,6 @@
+import { AppText } from "../../../components/AppText";
 import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
@@ -136,11 +130,11 @@ export function WeeklyReportScreen({ navigation, route }: Props) {
           accessibilityRole="button"
           accessibilityLabel="뒤로가기"
         >
-          <Text style={styles.backArrow}>←</Text>
+          <AppText style={styles.backArrow}>←</AppText>
         </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>
+        <AppText style={styles.headerTitle} numberOfLines={1}>
           {headerTitle}
-        </Text>
+        </AppText>
         <View style={styles.backBtn} />
       </View>
 
@@ -151,13 +145,13 @@ export function WeeklyReportScreen({ navigation, route }: Props) {
       >
         {/* 카드 1 — 이번 주 타이틀 */}
         <View style={[styles.card, styles.cardTitleBlock]}>
-          <Text style={styles.card1Subtitle}>
+          <AppText style={styles.card1Subtitle}>
             {formatWeekRangeSubtitle(data.start_date, data.end_date)}
-          </Text>
-          <Text style={styles.card1Title}>이번 주 바다 탐험</Text>
+          </AppText>
+          <AppText style={styles.card1Title}>이번 주 바다 탐험</AppText>
           {data.badge ? (
             <View style={styles.badgePill}>
-              <Text style={styles.badgeText}>{data.badge}</Text>
+              <AppText style={styles.badgeText}>{data.badge}</AppText>
             </View>
           ) : null}
         </View>
@@ -165,79 +159,79 @@ export function WeeklyReportScreen({ navigation, route }: Props) {
         {/* 카드 2 — 수치 요약 */}
         <View style={[styles.card, styles.cardMargin, styles.statsGrid]}>
           <View style={styles.statCol}>
-            <Text style={styles.statLabel}>평균 도파민 밸런스</Text>
-            <Text style={styles.statNumBlue}>{data.avg_balance_score}</Text>
+            <AppText style={styles.statLabel}>평균 도파민 밸런스</AppText>
+            <AppText style={styles.statNumBlue}>{data.avg_balance_score}</AppText>
           </View>
           <View style={styles.statCol}>
-            <Text style={styles.statLabel}>체크인 횟수</Text>
-            <Text style={styles.statNumGreen}>{data.checkin_count}</Text>
-            <Text style={styles.statSub}>{`${data.checkin_count}/7일`}</Text>
+            <AppText style={styles.statLabel}>체크인 횟수</AppText>
+            <AppText style={styles.statNumGreen}>{data.checkin_count}</AppText>
+            <AppText style={styles.statSub}>{`${data.checkin_count}/7일`}</AppText>
           </View>
         </View>
 
         {/* 카드 3 — 주요 활동 시간 */}
         <View style={[styles.card, styles.cardMargin]}>
-          <Text style={styles.card3Label}>주요 활동 시간</Text>
-          <Text style={styles.card3Value}>{data.main_activity_time}</Text>
+          <AppText style={styles.card3Label}>주요 활동 시간</AppText>
+          <AppText style={styles.card3Value}>{data.main_activity_time}</AppText>
         </View>
 
         {/* 카드 4 — 주세 분석 */}
         <View style={[styles.card, styles.cardMargin]}>
-          <Text style={styles.sectionTitle}>주세 분석</Text>
+          <AppText style={styles.sectionTitle}>주세 분석</AppText>
           <View style={styles.aiSubcard}>
             <View style={styles.aiSubcardRow}>
               <View style={styles.aiIconCircle} />
               <View style={styles.aiSubcardTextWrap}>
-                <Text style={styles.aiSubcardSummary}>{data.ai_summary}</Text>
-                <Text style={styles.aiSubcardHint}>전주 대비</Text>
+                <AppText style={styles.aiSubcardSummary}>{data.ai_summary}</AppText>
+                <AppText style={styles.aiSubcardHint}>전주 대비</AppText>
               </View>
             </View>
           </View>
           <View style={styles.divider} />
-          <Text style={styles.smallLabel}>가장 충실한 날</Text>
-          <Text style={styles.analysisValue}>{data.best_day}</Text>
-          <Text style={styles.analysisComment}>{data.best_day_comment}</Text>
+          <AppText style={styles.smallLabel}>가장 충실한 날</AppText>
+          <AppText style={styles.analysisValue}>{data.best_day}</AppText>
+          <AppText style={styles.analysisComment}>{data.best_day_comment}</AppText>
           <View style={styles.divider} />
-          <Text style={styles.smallLabel}>개선이 필요한 영역</Text>
-          <Text style={styles.analysisValue}>{data.improve_area}</Text>
-          <Text style={styles.analysisComment}>{data.improve_area_comment}</Text>
+          <AppText style={styles.smallLabel}>개선이 필요한 영역</AppText>
+          <AppText style={styles.analysisValue}>{data.improve_area}</AppText>
+          <AppText style={styles.analysisComment}>{data.improve_area_comment}</AppText>
         </View>
 
         {/* 카드 5 — 돌고래의 관찰 */}
         <View style={[styles.card, styles.cardMargin, styles.cardDolphin]}>
           <View style={styles.dolphinTitleRow}>
-            <Text style={styles.dolphinEmoji}>🐬</Text>
-            <Text style={styles.dolphinTitle}>돌고래의 관찰</Text>
+            <AppText style={styles.dolphinEmoji}>🐬</AppText>
+            <AppText style={styles.dolphinTitle}>돌고래의 관찰</AppText>
           </View>
           {data.dolphin_observations.map((line, i) => (
-            <Text
+            <AppText
               key={`d-${i}`}
               style={[styles.bulletLine, i > 0 && styles.bulletGap]}
             >
-              <Text style={styles.bulletDot}>• </Text>
-              <Text style={styles.bulletText}>{line}</Text>
-            </Text>
+              <AppText style={styles.bulletDot}>• </AppText>
+              <AppText style={styles.bulletText}>{line}</AppText>
+            </AppText>
           ))}
         </View>
 
         {/* 카드 6 — 다음 주를 위한 제안 */}
         <View style={[styles.card, styles.cardMargin]}>
-          <Text style={styles.sectionTitle}>다음 주를 위한 제안</Text>
+          <AppText style={styles.sectionTitle}>다음 주를 위한 제안</AppText>
           {data.next_week_suggestions.map((line, i) => (
-            <Text
+            <AppText
               key={`s-${i}`}
               style={[styles.bulletLine, i > 0 && styles.bulletGap]}
             >
-              <Text style={styles.bulletDot}>• </Text>
-              <Text style={styles.bulletText}>{line}</Text>
-            </Text>
+              <AppText style={styles.bulletDot}>• </AppText>
+              <AppText style={styles.bulletText}>{line}</AppText>
+            </AppText>
           ))}
         </View>
 
         {/* 카드 7 — AI 상세 코멘트 */}
         <View style={[styles.card, styles.cardMargin, styles.cardAiFooter]}>
-          <Text style={styles.sectionTitle}>이번 주 돌아보기</Text>
-          <Text style={styles.aiCommentBody}>{data.ai_comment}</Text>
+          <AppText style={styles.sectionTitle}>이번 주 돌아보기</AppText>
+          <AppText style={styles.aiCommentBody}>{data.ai_comment}</AppText>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -273,7 +267,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     fontSize: 17,
-    fontWeight: "700",
     color: TITLE,
   },
   scroll: {
@@ -306,7 +299,6 @@ const styles = StyleSheet.create({
   },
   card1Title: {
     fontSize: 28,
-    fontWeight: "700",
     color: TITLE,
     lineHeight: 36,
   },
@@ -320,7 +312,6 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 13,
-    fontWeight: "600",
     color: TITLE,
   },
   statsGrid: {
@@ -336,12 +327,10 @@ const styles = StyleSheet.create({
   },
   statNumBlue: {
     fontSize: 36,
-    fontWeight: "700",
     color: MAIN,
   },
   statNumGreen: {
     fontSize: 36,
-    fontWeight: "700",
     color: GREEN,
   },
   statSub: {
@@ -356,12 +345,10 @@ const styles = StyleSheet.create({
   },
   card3Value: {
     fontSize: 18,
-    fontWeight: "700",
     color: MAIN,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: "700",
     color: TITLE,
     marginBottom: 12,
   },
@@ -387,7 +374,6 @@ const styles = StyleSheet.create({
   },
   aiSubcardSummary: {
     fontSize: 16,
-    fontWeight: "700",
     color: TITLE,
     lineHeight: 22,
   },
@@ -408,7 +394,6 @@ const styles = StyleSheet.create({
   },
   analysisValue: {
     fontSize: 22,
-    fontWeight: "700",
     color: TITLE,
     marginBottom: 6,
   },
@@ -431,7 +416,6 @@ const styles = StyleSheet.create({
   },
   dolphinTitle: {
     fontSize: 16,
-    fontWeight: "700",
     color: TITLE,
   },
   bulletLine: {},
@@ -440,7 +424,6 @@ const styles = StyleSheet.create({
   },
   bulletDot: {
     color: MAIN,
-    fontWeight: "700",
   },
   bulletText: {
     fontSize: 15,

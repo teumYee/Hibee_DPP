@@ -27,6 +27,21 @@ function getModule(): UsageStatsModuleType | undefined {
   return UsageStatsModule;
 }
 
+function logPostUsageLogsPayload(payload: PostUsageLogsRequest, label: string): void {
+  const perLog = payload.logs.map((log, i) => ({
+    i,
+    package_name: log.package_name,
+    app_launch_count: log.app_launch_count,
+    max_continuous_duration: log.max_continuous_duration,
+  }));
+  console.log(`[syncUsageLogs] ${label}`, {
+    user_id: payload.user_id,
+    unlock_count: payload.unlock_count,
+    logsCount: payload.logs.length,
+    perLog,
+  });
+}
+
 function rowsToLogs(rows: UsageRow[], userId: number): UsageLogItem[] {
   return rows.map((r) => ({
     user_id: userId,
@@ -53,12 +68,14 @@ export async function syncUsageLogsOnDashboardEnter(): Promise<void> {
   const mod = getModule();
   const empty: PostUsageLogsRequest = { user_id: userId, logs: [], unlock_count: 0 };
   if (!mod) {
+    logPostUsageLogsPayload(empty, "no native module");
     await postUsageLogs(empty);
     return;
   }
   try {
     const ok = await mod.checkPermission();
     if (!ok) {
+      logPostUsageLogsPayload(empty, "usage permission denied");
       await postUsageLogs(empty);
       return;
     }
@@ -72,8 +89,10 @@ export async function syncUsageLogsOnDashboardEnter(): Promise<void> {
       logs: rowsToLogs(rows, userId),
       unlock_count: typeof unlockCount === "number" ? unlockCount : 0,
     };
+    logPostUsageLogsPayload(payload, "full sync");
     await postUsageLogs(payload);
   } catch {
+    logPostUsageLogsPayload(empty, "catch → empty");
     await postUsageLogs(empty);
   }
 }

@@ -1,12 +1,7 @@
 // 앱 소개 — Dolphin Pod 작동 방식
+import { AppText } from "../../../components/AppText";
 import React, { useCallback } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { OnboardingStackParamList } from "../../../navigation/types";
@@ -55,15 +50,15 @@ export function AppIntroScreen({ navigation }: Props) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Dolphin Pod는{"\n"}이렇게 작동해요</Text>
-        <Text style={styles.lead}>함께 헤엄치는 방법</Text>
+        <AppText style={styles.title}>Dolphin Pod는{"\n"}이렇게 작동해요</AppText>
+        <AppText style={styles.lead}>함께 헤엄치는 방법</AppText>
 
         {ITEMS.map((item) => (
           <View key={item.title} style={styles.card}>
-            <Text style={styles.emoji}>{item.emoji}</Text>
+            <AppText style={styles.emoji}>{item.emoji}</AppText>
             <View style={styles.cardText}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardBody}>{item.body}</Text>
+              <AppText style={styles.cardTitle}>{item.title}</AppText>
+              <AppText style={styles.cardBody}>{item.body}</AppText>
             </View>
           </View>
         ))}
@@ -79,7 +74,7 @@ export function AppIntroScreen({ navigation }: Props) {
           accessibilityRole="button"
           accessibilityLabel="이해했어요"
         >
-          <Text style={styles.primaryBtnText}>이해했어요</Text>
+          <AppText style={styles.primaryBtnText}>이해했어요</AppText>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -100,7 +95,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: "700",
     color: "#111111",
     marginTop: 8,
     marginBottom: 8,
@@ -109,7 +103,6 @@ const styles = StyleSheet.create({
   lead: {
     fontSize: 16,
     color: MAIN,
-    fontWeight: "600",
     marginBottom: 24,
   },
   card: {
@@ -130,7 +123,6 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: "700",
     color: "#111111",
     marginBottom: 8,
   },
@@ -159,6 +151,5 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: "700",
   },
 });

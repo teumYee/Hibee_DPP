@@ -1,15 +1,7 @@
 // 심야 시간 원형 선택 (PanResponder + SVG 호)
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  PanResponder,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Dimensions, PanResponder, Pressable, StyleSheet, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import type {
   NativeStackNavigationProp,
@@ -231,7 +223,7 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
       headerRight={
         !isEdit ? (
           <Pressable onPress={onSkip} hitSlop={8} accessibilityRole="button">
-            <Text style={styles.skipText}>건너뛰기</Text>
+            <AppText style={styles.skipText}>건너뛰기</AppText>
           </Pressable>
         ) : undefined
       }
@@ -250,9 +242,9 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.primaryBtnText}>
+            <AppText style={styles.primaryBtnText}>
               {isEdit ? "저장하기" : "완료하기"}
-            </Text>
+            </AppText>
           )}
         </Pressable>
       }
@@ -270,7 +262,7 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
           pointerEvents="none"
           style={[styles.centerLabel, { width: size, height: size }]}
         >
-          <Text style={styles.rangeText}>{rangeLabel}</Text>
+          <AppText style={styles.rangeText}>{rangeLabel}</AppText>
         </View>
         <View
           pointerEvents="none"
@@ -293,9 +285,9 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
       </View>
 
       <View style={styles.legend}>
-        <Text style={styles.legendText}>🕐 시간</Text>
+        <AppText style={styles.legendText}>🕐 시간</AppText>
         <View style={styles.legendSwatch} />
-        <Text style={styles.legendText}>🌙</Text>
+        <AppText style={styles.legendText}>🌙</AppText>
       </View>
     </OnboardingStepLayout>
   );
@@ -320,7 +312,6 @@ const styles = StyleSheet.create({
   },
   rangeText: {
     fontSize: 18,
-    fontWeight: "700",
     color: "#FFFFFF",
     textAlign: "center",
     paddingHorizontal: 12,
@@ -371,11 +362,9 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: "700",
   },
   skipText: {
     color: SKIP,
     fontSize: 14,
-    fontWeight: "600",
   },
 });

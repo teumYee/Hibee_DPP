@@ -1,12 +1,13 @@
 // 메인 — 사용자 요약, 온보딩 등
 import type { OnboardingDraft } from "../../store/auth.store";
+import { useAuthStore } from "../../store/auth.store";
 import { get, post } from "./client";
 import { ENDPOINTS } from "./endpoints";
 
 export type GetUserSummaryResponse = {
   nickname: string;
-  coins: number;
-  current_character: string;
+  coin: number;
+  streak_days: number;
 };
 
 export type PostNicknameRequest = {
@@ -40,7 +41,13 @@ export function buildOnboardingPayload(
 }
 
 export async function getUserSummary(): Promise<GetUserSummaryResponse> {
-  return get<GetUserSummaryResponse>(ENDPOINTS.usersMeSummary);
+  const userId = useAuthStore.getState().userId;
+  if (userId == null) {
+    throw new Error("getUserSummary: userId is not set");
+  }
+  return get<GetUserSummaryResponse>(ENDPOINTS.usersMeSummary, {
+    user_id: userId,
+  });
 }
 
 export async function postNickname(body: PostNicknameRequest): Promise<void> {

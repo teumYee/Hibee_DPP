@@ -1,6 +1,7 @@
 // 업적 상세 — Main 스택에서 modal로 표시
+import { AppText } from "../../../components/AppText";
 import React, { useMemo } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
@@ -54,7 +55,7 @@ export function AchievementDetailScreen({ navigation, route }: Props) {
           accessibilityRole="button"
           accessibilityLabel="닫기"
         >
-          <Text style={styles.closeBtn}>✕</Text>
+          <AppText style={styles.closeBtn}>✕</AppText>
         </Pressable>
       </View>
 
@@ -62,21 +63,21 @@ export function AchievementDetailScreen({ navigation, route }: Props) {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.kicker}>기억의 조각</Text>
+        <AppText style={styles.kicker}>기억의 조각</AppText>
 
         <View style={[styles.iconCircle, { backgroundColor: circleBg }]}>
-          <Text style={styles.iconEmoji}>{achievement.icon}</Text>
+          <AppText style={styles.iconEmoji}>{achievement.icon}</AppText>
         </View>
 
-        <Text style={styles.name}>{achievement.name}</Text>
-        <Text style={styles.desc}>{achievement.description}</Text>
+        <AppText style={styles.name}>{achievement.name}</AppText>
+        <AppText style={styles.desc}>{achievement.description}</AppText>
 
         {achievement.is_earned && earnedLabel ? (
-          <Text style={styles.earned}>
+          <AppText style={styles.earned}>
             📅 {earnedLabel} 달성
-          </Text>
+          </AppText>
         ) : (
-          <Text style={styles.locked}>🔒 아직 달성하지 못했어요</Text>
+          <AppText style={styles.locked}>🔒 아직 달성하지 못했어요</AppText>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -127,7 +128,6 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 24,
-    fontWeight: "700",
     color: "#111111",
     textAlign: "center",
     marginBottom: 12,
@@ -141,7 +141,6 @@ const styles = StyleSheet.create({
   },
   earned: {
     fontSize: 15,
-    fontWeight: "600",
     color: MAIN,
   },
   locked: {

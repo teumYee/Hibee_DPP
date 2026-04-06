@@ -1,13 +1,6 @@
+import { AppText } from "../../../components/AppText";
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Dimensions,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Dimensions, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, {
   Line,
@@ -18,6 +11,7 @@ import Svg, {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
 import type { DailyReportData } from "../types";
+import { APP_FONT_FAMILY } from "../../../theme/typography";
 
 const MAIN = "#2E7FC1";
 const BG = "#F5F7FA";
@@ -146,6 +140,7 @@ function TimeFlowChart({ buckets, width, height }: TimeFlowChartProps) {
           x={hourToX(h)}
           y={height - 8}
           fill="#888888"
+          fontFamily={APP_FONT_FAMILY}
           fontSize={10}
           textAnchor="middle"
         >
@@ -201,12 +196,12 @@ export function DailyReportScreen({ navigation, route }: Props) {
           hitSlop={12}
           style={styles.backWrap}
         >
-          <Text style={styles.backText}>← 목록으로</Text>
+          <AppText style={styles.backText}>← 목록으로</AppText>
         </Pressable>
-        <Text style={styles.headerTitle}>하루의 기록</Text>
+        <AppText style={styles.headerTitle}>하루의 기록</AppText>
         <View style={styles.backWrap} />
       </View>
-      <Text style={styles.dateLine}>{formatKoreanLongDate(data.date)}</Text>
+      <AppText style={styles.dateLine}>{formatKoreanLongDate(data.date)}</AppText>
 
       <ScrollView
         style={styles.scroll}
@@ -214,15 +209,15 @@ export function DailyReportScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.card, styles.cardHighlight]}>
-          <Text style={styles.moon}>🌙</Text>
-          <Text style={styles.aiSummary}>{data.ai_summary}</Text>
-          <Text style={styles.aiSub}>
+          <AppText style={styles.moon}>🌙</AppText>
+          <AppText style={styles.aiSummary}>{data.ai_summary}</AppText>
+          <AppText style={styles.aiSub}>
             내일도 조금 편히 헤엄칠 준비를 해볼까요?
-          </Text>
+          </AppText>
         </View>
 
         <View style={[styles.card, styles.cardMargin]}>
-          <Text style={styles.cardTitle}>시간의 흐름</Text>
+          <AppText style={styles.cardTitle}>시간의 흐름</AppText>
           <View style={styles.legendRow}>
             <LegendDot color="#FFF8E7" label="아침" border />
             <LegendDot color="#E8F4FC" label="낮" border />
@@ -234,11 +229,11 @@ export function DailyReportScreen({ navigation, route }: Props) {
             width={chartW}
             height={200}
           />
-          <Text style={styles.chartCaption}>하루 동안의 기기 사용 흐름</Text>
+          <AppText style={styles.chartCaption}>하루 동안의 기기 사용 흐름</AppText>
         </View>
 
         <View style={[styles.card, styles.cardMargin]}>
-          <Text style={styles.cardTitle}>주로 어떤 물결과 함께했나요</Text>
+          <AppText style={styles.cardTitle}>주로 어떤 물결과 함께했나요</AppText>
           {data.category_usage.map((c) => (
             <View key={c.name} style={styles.catBlock}>
               <View style={styles.catRow}>
@@ -246,8 +241,8 @@ export function DailyReportScreen({ navigation, route }: Props) {
                   style={[styles.catIconDot, { backgroundColor: c.color }]}
                 />
                 <View style={styles.catMeta}>
-                  <Text style={styles.catName}>{c.name}</Text>
-                  <Text style={styles.catMin}>{c.minutes}분</Text>
+                  <AppText style={styles.catName}>{c.name}</AppText>
+                  <AppText style={styles.catMin}>{c.minutes}분</AppText>
                 </View>
               </View>
               <View style={styles.barTrack}>
@@ -266,9 +261,9 @@ export function DailyReportScreen({ navigation, route }: Props) {
         </View>
 
         <View style={[styles.card, styles.cardMargin]}>
-          <Text style={styles.cardTitle}>오늘의 다짐</Text>
+          <AppText style={styles.cardTitle}>오늘의 다짐</AppText>
           {data.kpt_items.length === 0 ? (
-            <Text style={styles.kptEmpty}>오늘은 체크인을 패스했어요</Text>
+            <AppText style={styles.kptEmpty}>오늘은 체크인을 패스했어요</AppText>
           ) : (
             data.kpt_items.map((item) => (
               <View key={item.label} style={styles.kptRow}>
@@ -280,7 +275,7 @@ export function DailyReportScreen({ navigation, route }: Props) {
                     item.type === "try" && styles.kptTry,
                   ]}
                 >
-                  <Text
+                  <AppText
                     style={[
                       styles.kptPillText,
                       item.type === "try" && styles.kptPillTextDark,
@@ -291,17 +286,17 @@ export function DailyReportScreen({ navigation, route }: Props) {
                       : item.type === "problem"
                         ? "⚠️"
                         : "🔄"}
-                  </Text>
+                  </AppText>
                 </View>
-                <Text style={styles.kptLabel}>{item.label}</Text>
+                <AppText style={styles.kptLabel}>{item.label}</AppText>
               </View>
             ))
           )}
         </View>
 
         <View style={[styles.card, styles.cardMargin, styles.cardMuted]}>
-          <Text style={styles.cardTitle}>오늘 하루 돌아보기</Text>
-          <Text style={styles.aiBody}>{data.ai_comment}</Text>
+          <AppText style={styles.cardTitle}>오늘 하루 돌아보기</AppText>
+          <AppText style={styles.aiBody}>{data.ai_comment}</AppText>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -326,7 +321,7 @@ function LegendDot({
           border && styles.legendSwatchBorder,
         ]}
       />
-      <Text style={styles.legendLabel}>{label}</Text>
+      <AppText style={styles.legendLabel}>{label}</AppText>
     </View>
   );
 }
@@ -353,13 +348,11 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: 15,
     color: MAIN,
-    fontWeight: "600",
   },
   headerTitle: {
     flex: 1,
     textAlign: "center",
     fontSize: 17,
-    fontWeight: "700",
     color: TITLE,
   },
   dateLine: {
@@ -401,7 +394,6 @@ const styles = StyleSheet.create({
   },
   aiSummary: {
     fontSize: 20,
-    fontWeight: "700",
     color: TITLE,
     lineHeight: 28,
     marginBottom: 8,
@@ -413,7 +405,6 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: "700",
     color: TITLE,
     marginBottom: 12,
   },
@@ -470,7 +461,6 @@ const styles = StyleSheet.create({
   },
   catName: {
     fontSize: 15,
-    fontWeight: "600",
     color: TITLE,
   },
   catMin: {
@@ -516,7 +506,6 @@ const styles = StyleSheet.create({
   },
   kptPillText: {
     fontSize: 12,
-    fontWeight: "700",
     color: "#FFFFFF",
   },
   kptPillTextDark: {
