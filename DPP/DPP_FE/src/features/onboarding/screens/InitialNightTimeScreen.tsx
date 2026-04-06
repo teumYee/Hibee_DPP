@@ -1,7 +1,16 @@
 // 심야 시간 원형 선택 (PanResponder + SVG 호)
 import { AppText } from "../../../components/AppText";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Dimensions, PanResponder, Pressable, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import type {
   NativeStackNavigationProp,
@@ -15,6 +24,12 @@ import {
   buildOnboardingPayload,
   postOnboarding,
 } from "../../../services/api/main.api";
+import {
+  DEFAULT_CHECKIN_WINDOW_MINUTES,
+  DEFAULT_DAY_ROLLOVER_TIME,
+  deriveCheckinTimeFromNightStart,
+  formatHhMm,
+} from "../../checkin/utils/checkinPolicy";
 import { type OnboardingDraft, useAuthStore } from "../../../store/auth.store";
 import { OnboardingStepLayout } from "../components/OnboardingStepLayout";
 
@@ -38,7 +53,6 @@ type Props =
 
 const MAIN = "#2E7FC1";
 const NAVY = "#0D2E5C";
-const BG = "#FFFFFF";
 const SKIP = "#6C7A89";
 
 function hourToRad(hour: number): number {
@@ -63,6 +77,12 @@ function formatHour(h: number): string {
   return `${String(h).padStart(2, "0")}:00`;
 }
 
+function parseHour(value: string, fallback: number): number {
+  const match = /^(\d{1,2})(?::\d{2})?$/.exec(value.trim());
+  const parsed = match ? Number(match[1]) : Number.NaN;
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= 23 ? parsed : fallback;
+}
+
 function describeArc(
   cx: number,
   cy: number,
@@ -84,15 +104,53 @@ function describeArc(
 }
 
 type DragHandle = "start" | "end";
+type HourOption = {
+  hour: number;
+  label: string;
+};
+
+const CHECKIN_TIME_OPTIONS: HourOption[] = [
+  { hour: 18, label: "18:00" },
+  { hour: 19, label: "19:00" },
+  { hour: 20, label: "20:00" },
+  { hour: 21, label: "21:00" },
+  { hour: 22, label: "22:00" },
+  { hour: 23, label: "23:00" },
+];
+
+const ROLLOVER_OPTIONS: HourOption[] = [
+  { hour: 2, label: "02:00" },
+  { hour: 3, label: "03:00" },
+  { hour: 4, label: "04:00" },
+  { hour: 5, label: "05:00" },
+  { hour: 6, label: "06:00" },
+];
+
+const WINDOW_OPTIONS = [60, 90, 120, 150];
 
 export function InitialNightTimeScreen({ navigation, route }: Props) {
   const isEdit = route.params?.isEditMode === true;
   const setOnboardingData = useAuthStore((s) => s.setOnboardingData);
+  const draft = useAuthStore.getState().onboardingData;
   const [startHour, setStartHour] = useState(() =>
-    initialNightHours(useAuthStore.getState().onboardingData).start,
+    initialNightHours(draft).start,
   );
   const [endHour, setEndHour] = useState(() =>
-    initialNightHours(useAuthStore.getState().onboardingData).end,
+    initialNightHours(draft).end,
+  );
+  const [checkinHour, setCheckinHour] = useState(() =>
+    parseHour(
+      draft.checkin_time || deriveCheckinTimeFromNightStart(draft.night_mode_start),
+      21,
+    ),
+  );
+  const [rolloverHour, setRolloverHour] = useState(() =>
+    parseHour(draft.day_rollover_time || DEFAULT_DAY_ROLLOVER_TIME, 4),
+  );
+  const [windowMinutes, setWindowMinutes] = useState(() =>
+    typeof draft.checkin_window_minutes === "number" && draft.checkin_window_minutes > 0
+      ? draft.checkin_window_minutes
+      : DEFAULT_CHECKIN_WINDOW_MINUTES,
   );
   const [loading, setLoading] = useState(false);
 
@@ -176,13 +234,28 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
     () => `${formatHour(startHour)} - ${formatHour(endHour)}`,
     [startHour, endHour],
   );
+  const checkinWindowLabel = useMemo(() => {
+    const start = (checkinHour * 60 - windowMinutes + 1440) % 1440;
+    const end = (checkinHour * 60 + windowMinutes) % 1440;
+    return `${formatHhMm(Math.floor(start / 60), start % 60)} - ${formatHhMm(
+      Math.floor(end / 60),
+      end % 60,
+    )}`;
+  }, [checkinHour, windowMinutes]);
 
   const onNext = useCallback(async () => {
     setLoading(true);
     try {
+      const nightModeStart = formatHour(startHour);
+      const nightModeEnd = formatHour(endHour);
+      const checkinTime = formatHour(checkinHour);
+      const dayRolloverTime = formatHour(rolloverHour);
       await setOnboardingData({
-        night_mode_start: formatHour(startHour),
-        night_mode_end: formatHour(endHour),
+        night_mode_start: nightModeStart,
+        night_mode_end: nightModeEnd,
+        checkin_time: checkinTime,
+        checkin_window_minutes: windowMinutes,
+        day_rollover_time: dayRolloverTime,
       });
       if (isEdit) {
         const uid = useAuthStore.getState().userId;
@@ -205,7 +278,16 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [endHour, isEdit, navigation, setOnboardingData, startHour]);
+  }, [
+    checkinHour,
+    endHour,
+    isEdit,
+    navigation,
+    rolloverHour,
+    setOnboardingData,
+    startHour,
+    windowMinutes,
+  ]);
 
   const onSkip = useCallback(() => {
     (
@@ -217,8 +299,8 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
     <OnboardingStepLayout
       step={3}
       hideProgress={isEdit}
-      title="심야 시간을 설정해주세요"
-      subtitle="이 시간대, 조금 더 여유롭게 관찰해요"
+      title="심야와 체크인 기준을 설정해주세요"
+      subtitle="심야 시간, 체크인 시각, 하루 경계 시각을 함께 정해요"
       onBack={() => navigation.goBack()}
       headerRight={
         !isEdit ? (
@@ -249,51 +331,135 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
         </Pressable>
       }
     >
-      <View
-        style={[styles.clockWrap, { height: size + 32 }]}
-        collapsable={false}
-        {...pan.panHandlers}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <Svg width={size} height={size} style={styles.svg}>
-          <Circle cx={cx} cy={cy} r={rOuter} fill={NAVY} />
-          <Path d={arcPath} stroke={MAIN} strokeWidth={10} fill="none" />
-        </Svg>
         <View
-          pointerEvents="none"
-          style={[styles.centerLabel, { width: size, height: size }]}
+          style={[styles.clockWrap, { height: size + 32 }]}
+          collapsable={false}
+          {...pan.panHandlers}
         >
-          <AppText style={styles.rangeText}>{rangeLabel}</AppText>
+          <Svg width={size} height={size} style={styles.svg}>
+            <Circle cx={cx} cy={cy} r={rOuter} fill={NAVY} />
+            <Path d={arcPath} stroke={MAIN} strokeWidth={10} fill="none" />
+          </Svg>
+          <View
+            pointerEvents="none"
+            style={[styles.centerLabel, { width: size, height: size }]}
+          >
+            <AppText style={styles.rangeText}>{rangeLabel}</AppText>
+          </View>
+          <View
+            pointerEvents="none"
+            style={[
+              styles.handle,
+              { left: posStart.left, top: posStart.top, width: rHandle * 2, height: rHandle * 2 },
+            ]}
+          >
+            <View style={styles.handleInner} />
+          </View>
+          <View
+            pointerEvents="none"
+            style={[
+              styles.handle,
+              { left: posEnd.left, top: posEnd.top, width: rHandle * 2, height: rHandle * 2 },
+            ]}
+          >
+            <View style={styles.handleInner} />
+          </View>
         </View>
-        <View
-          pointerEvents="none"
-          style={[
-            styles.handle,
-            { left: posStart.left, top: posStart.top, width: rHandle * 2, height: rHandle * 2 },
-          ]}
-        >
-          <View style={styles.handleInner} />
-        </View>
-        <View
-          pointerEvents="none"
-          style={[
-            styles.handle,
-            { left: posEnd.left, top: posEnd.top, width: rHandle * 2, height: rHandle * 2 },
-          ]}
-        >
-          <View style={styles.handleInner} />
-        </View>
-      </View>
 
-      <View style={styles.legend}>
-        <AppText style={styles.legendText}>🕐 시간</AppText>
-        <View style={styles.legendSwatch} />
-        <AppText style={styles.legendText}>🌙</AppText>
-      </View>
+        <View style={styles.legend}>
+          <AppText style={styles.legendText}>🕐 시간</AppText>
+          <View style={styles.legendSwatch} />
+          <AppText style={styles.legendText}>🌙 심야</AppText>
+        </View>
+
+        <View style={styles.sectionCard}>
+          <AppText style={styles.sectionTitle}>체크인 시간</AppText>
+          <AppText style={styles.sectionHint}>
+            체크인이 열리는 중심 시각이에요. 현재 허용 구간은 {checkinWindowLabel}
+            예요.
+          </AppText>
+          <View style={styles.optionWrap}>
+            {CHECKIN_TIME_OPTIONS.map((option) => {
+              const selected = option.hour === checkinHour;
+              return (
+                <Pressable
+                  key={option.hour}
+                  style={[styles.optionChip, selected && styles.optionChipOn]}
+                  onPress={() => setCheckinHour(option.hour)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                >
+                  <AppText style={[styles.optionChipText, selected && styles.optionChipTextOn]}>
+                    {option.label}
+                  </AppText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.sectionCard}>
+          <AppText style={styles.sectionTitle}>체크인 허용 시간창</AppText>
+          <AppText style={styles.sectionHint}>
+            선택한 체크인 시각 전후로 얼마나 여유를 둘지 정해요.
+          </AppText>
+          <View style={styles.optionWrap}>
+            {WINDOW_OPTIONS.map((option) => {
+              const selected = option === windowMinutes;
+              return (
+                <Pressable
+                  key={option}
+                  style={[styles.optionChip, selected && styles.optionChipOn]}
+                  onPress={() => setWindowMinutes(option)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                >
+                  <AppText style={[styles.optionChipText, selected && styles.optionChipTextOn]}>
+                    ±{option}분
+                  </AppText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.sectionCard}>
+          <AppText style={styles.sectionTitle}>데일리 롤오버 시간</AppText>
+          <AppText style={styles.sectionHint}>
+            이 시각 전까지는 전날 기록으로 보고, 이후부터 새 하루로 계산해요.
+          </AppText>
+          <View style={styles.optionWrap}>
+            {ROLLOVER_OPTIONS.map((option) => {
+              const selected = option.hour === rolloverHour;
+              return (
+                <Pressable
+                  key={option.hour}
+                  style={[styles.optionChip, selected && styles.optionChipOn]}
+                  onPress={() => setRolloverHour(option.hour)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                >
+                  <AppText style={[styles.optionChipText, selected && styles.optionChipTextOn]}>
+                    {option.label}
+                  </AppText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      </ScrollView>
     </OnboardingStepLayout>
   );
 }
 
 const styles = StyleSheet.create({
+  scrollContent: {
+    paddingBottom: 16,
+  },
   clockWrap: {
     alignSelf: "center",
     marginBottom: 16,
@@ -336,6 +502,50 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 24,
     marginBottom: 8,
+  },
+  sectionCard: {
+    marginHorizontal: 24,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: "#F7FAFD",
+    borderWidth: 1,
+    borderColor: "#E1EAF3",
+  },
+  sectionTitle: {
+    fontSize: 16,
+    color: "#1C2B39",
+    marginBottom: 6,
+  },
+  sectionHint: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: "#5A6B7B",
+    marginBottom: 12,
+  },
+  optionWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  optionChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#C9D7E5",
+    backgroundColor: "#FFFFFF",
+  },
+  optionChipOn: {
+    backgroundColor: MAIN,
+    borderColor: MAIN,
+  },
+  optionChipText: {
+    fontSize: 13,
+    color: "#395168",
+  },
+  optionChipTextOn: {
+    color: "#FFFFFF",
   },
   legendText: {
     fontSize: 14,

@@ -30,11 +30,42 @@ from services.report_pipeline_service import (
     render_weekly_report_from_record,
     run_daily_report_pipeline,
 )
+from app.utils.checkin_policy import (
+    CANONICAL_PACKAGE_NAME,
+    DEFAULT_CHECKIN_TIME,
+    DEFAULT_CHECKIN_WINDOW_MINUTES,
+    DEFAULT_DAY_ROLLOVER_TIME,
+)
+from app.utils.pattern_candidates import normalize_pattern_candidates as _normalize_pipeline_candidates
 
 router = APIRouter()
 
 
 def _build_checkin_pipeline_input(snapshot: Daily_SnapShots, user_config: User_Configs | None) -> Dict[str, Any]:
+    per_app = snapshot.per_app_usage_json if isinstance(snapshot.per_app_usage_json, list) else []
+    per_category = (
+        snapshot.per_category_usage_json
+        if isinstance(snapshot.per_category_usage_json, list)
+        else []
+    )
+    timeline = snapshot.timeline_buckets_json if isinstance(snapshot.timeline_buckets_json, dict) else {}
+    top_apps = snapshot.top_apps_json if isinstance(snapshot.top_apps_json, list) else []
+    user_timezone = snapshot.timezone or "Asia/Seoul"
+    checkin_time = (
+        user_config.checkin_time
+        if user_config and user_config.checkin_time
+        else DEFAULT_CHECKIN_TIME
+    )
+    checkin_window_minutes = (
+        user_config.checkin_window_minutes
+        if user_config and user_config.checkin_window_minutes
+        else DEFAULT_CHECKIN_WINDOW_MINUTES
+    )
+    day_rollover_time = (
+        user_config.day_rollover_time
+        if user_config and user_config.day_rollover_time
+        else DEFAULT_DAY_ROLLOVER_TIME
+    )
     return {
         "snapshot": {
             "date": snapshot.snapshot_date.isoformat() if snapshot.snapshot_date else "",
@@ -45,6 +76,22 @@ def _build_checkin_pipeline_input(snapshot: Daily_SnapShots, user_config: User_C
             "max_continuous_sec": snapshot.max_continuous_sec or 0,
             "app_launch_count": snapshot.app_launch_count or 0,
             "package_name": snapshot.package_name,
+            "timezone": user_timezone,
+            "schema_version": snapshot.schema_version or "1.0.0",
+            "top_apps_json": top_apps,
+        },
+        "behavior_breakdown": {
+            "per_app": per_app,
+            "per_category": per_category,
+            "time_distribution": timeline or (snapshot.time_of_day_buckets_json or {}),
+            "top_apps": top_apps,
+        },
+        "time_policy": {
+            "timezone": user_timezone,
+            "checkin_time": checkin_time,
+            "checkin_window_minutes": checkin_window_minutes,
+            "day_rollover_time": day_rollover_time,
+            "logical_date": snapshot.snapshot_date.isoformat() if snapshot.snapshot_date else "",
         },
         "user_configs": {
             "goals": user_config.goals if user_config else [],
@@ -52,47 +99,23 @@ def _build_checkin_pipeline_input(snapshot: Daily_SnapShots, user_config: User_C
             "struggles": user_config.struggles if user_config else [],
             "night_mode_start": user_config.night_mode_start if user_config else "23:00",
             "night_mode_end": user_config.night_mode_end if user_config else "07:00",
-            "checkin_time": user_config.checkin_time if user_config else "21:00",
+            "checkin_time": checkin_time,
+            "checkin_window_minutes": checkin_window_minutes,
+            "day_rollover_time": day_rollover_time,
         },
     }
 
 
-def _normalize_pipeline_candidates(raw_candidates: Any) -> List[dict]:
-    if not isinstance(raw_candidates, list):
-        return []
-
-    normalized: List[dict] = []
-    for item in raw_candidates:
-        if not isinstance(item, dict):
-            continue
-
-        candidate = dict(item)
-        label = str(candidate.get("label") or "").strip()
-        observation = str(candidate.get("observation") or "").strip()
-        interpretation = str(candidate.get("interpretation") or "").strip()
-
-        if label and not candidate.get("title"):
-            candidate["title"] = label
-        if not candidate.get("description"):
-            candidate["description"] = interpretation or observation
-
-        evidence = candidate.get("evidence")
-        if not isinstance(evidence, dict):
-            candidate["evidence"] = {"metrics_used": [], "numbers": []}
-        else:
-            evidence = dict(evidence)
-            if not isinstance(evidence.get("metrics_used"), list):
-                evidence["metrics_used"] = []
-            if not isinstance(evidence.get("numbers"), list):
-                evidence["numbers"] = []
-            candidate["evidence"] = evidence
-
-        if not isinstance(candidate.get("tags"), list):
-            candidate["tags"] = []
-
-        normalized.append(candidate)
-
-    return normalized
+def _get_canonical_snapshot(db: Session, user_id: int, target_date: date) -> Daily_SnapShots | None:
+    return (
+        db.query(Daily_SnapShots)
+        .filter(
+            Daily_SnapShots.user_id == user_id,
+            Daily_SnapShots.snapshot_date == target_date,
+            Daily_SnapShots.package_name == CANONICAL_PACKAGE_NAME,
+        )
+        .first()
+    )
 
 
 def _weekly_evidence_refs_from_rows(
@@ -156,13 +179,12 @@ async def generate_pattern_candidates(
     current_user: Users = Depends(get_current_user),
 ):
     current_user_id = current_user.id
+    user_config = db.query(User_Configs).filter(User_Configs.user_id == current_user_id).first()
 
-    snapshot = db.query(Daily_SnapShots).filter(
-        Daily_SnapShots.user_id == current_user_id,
-        Daily_SnapShots.snapshot_date == payload.date,
-    ).first()
+    snapshot = _get_canonical_snapshot(db, current_user_id, payload.date)
     if not snapshot:
         raise HTTPException(status_code=404, detail="스냅샷이 먼저 업로드되어야 합니다.")
+    # 테스트 모드: 체크인 시간창 및 logical_date 일치 제한을 잠시 비활성화한다.
 
     existing = db.query(PatternCandidatesDaily).filter(
         PatternCandidatesDaily.user_id == current_user_id,
@@ -177,7 +199,6 @@ async def generate_pattern_candidates(
             candidates=existing.candidates or [],
         )
 
-    user_config = db.query(User_Configs).filter(User_Configs.user_id == current_user_id).first()
     pipeline_input = _build_checkin_pipeline_input(snapshot, user_config)
 
     try:
@@ -346,10 +367,7 @@ def generate_daily_report(
 ):
     current_user_id = current_user.id
 
-    snapshot = db.query(Daily_SnapShots).filter(
-        Daily_SnapShots.user_id == current_user_id,
-        Daily_SnapShots.snapshot_date == payload.date,
-    ).first()
+    snapshot = _get_canonical_snapshot(db, current_user_id, payload.date)
     if not snapshot:
         raise HTTPException(status_code=404, detail="스냅샷이 먼저 업로드되어야 합니다.")
 
@@ -474,10 +492,7 @@ def get_daily_report(
     if not daily_report:
         raise HTTPException(status_code=404, detail="해당 날짜의 데일리 리포트가 없습니다.")
 
-    snapshot = db.query(Daily_SnapShots).filter(
-        Daily_SnapShots.user_id == current_user_id,
-        Daily_SnapShots.snapshot_date == target_date,
-    ).first()
+    snapshot = _get_canonical_snapshot(db, current_user_id, target_date)
     checkin = db.query(CheckIn).filter(
         CheckIn.user_id == current_user_id,
         CheckIn.date == target_date,
@@ -553,6 +568,7 @@ def generate_weekly_report(
         Daily_SnapShots.user_id == current_user_id,
         Daily_SnapShots.snapshot_date >= week_start,
         Daily_SnapShots.snapshot_date <= week_end,
+        Daily_SnapShots.package_name == CANONICAL_PACKAGE_NAME,
     ).all()
     checkin_rows = db.query(CheckIn).filter(
         CheckIn.user_id == current_user_id,
@@ -662,6 +678,7 @@ def get_weekly_report(
         Daily_SnapShots.user_id == current_user_id,
         Daily_SnapShots.snapshot_date >= normalized_week_start,
         Daily_SnapShots.snapshot_date <= week_end,
+        Daily_SnapShots.package_name == CANONICAL_PACKAGE_NAME,
     ).all()
     checkin_rows = db.query(CheckIn).filter(
         CheckIn.user_id == current_user_id,

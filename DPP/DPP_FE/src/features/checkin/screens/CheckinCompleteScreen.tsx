@@ -5,7 +5,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
 import { submitCheckin } from "../../../services/api/checkin.api";
+import { ensureDailyReportByDate } from "../../../services/api/report.api";
 import type { KPTChoice } from "../types";
+import { getLogicalDate } from "../utils/checkinPolicy";
 
 const BG = "#0D2E5C";
 const KEEP = "#2E7FC1";
@@ -45,7 +47,23 @@ export function CheckinCompleteScreen({ navigation, route }: Props) {
         pattern_ids,
         kpt_tags: selected.map((s) => s.kpt),
       });
-      navigation.navigate("Home");
+
+      const today = getLogicalDate();
+
+      try {
+        await ensureDailyReportByDate(today);
+        navigation.replace("DailyReport", { date: today });
+      } catch (reportError) {
+        const msg =
+          reportError instanceof Error
+            ? reportError.message
+            : "리포트를 바로 준비하지 못했어요";
+        Alert.alert(
+          "체크인 완료",
+          `체크인은 저장됐어요.\n${msg}`,
+          [{ text: "확인", onPress: () => navigation.navigate("Home") }],
+        );
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "제출에 실패했어요";
       Alert.alert("오류", msg);
@@ -53,6 +71,12 @@ export function CheckinCompleteScreen({ navigation, route }: Props) {
       setSubmitting(false);
     }
   }, [navigation, selected]);
+
+  const onPressDone = useCallback(() => {
+    onDone().catch(() => {
+      // onDone 내부에서 에러 안내를 처리한다.
+    });
+  }, [onDone]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -103,15 +127,15 @@ export function CheckinCompleteScreen({ navigation, route }: Props) {
       <View style={styles.footer}>
         <Pressable
           style={[styles.doneBtn, submitting && styles.doneBtnDisabled]}
-          onPress={() => void onDone()}
+          onPress={onPressDone}
           disabled={submitting}
           accessibilityRole="button"
-          accessibilityLabel="완료"
+          accessibilityLabel="리포트 보기"
         >
           {submitting ? (
             <ActivityIndicator color="#2E7FC1" />
           ) : (
-            <AppText style={styles.doneLabel}>완료</AppText>
+            <AppText style={styles.doneLabel}>리포트 보기</AppText>
           )}
         </Pressable>
       </View>

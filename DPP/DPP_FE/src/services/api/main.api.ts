@@ -21,6 +21,9 @@ export type PostOnboardingRequest = {
   active_times: string[];
   night_mode_start: string;
   night_mode_end: string;
+  checkin_time: string;
+  checkin_window_minutes: number;
+  day_rollover_time: string;
   struggles: string[];
   focus_categories: string[];
 };
@@ -35,6 +38,9 @@ export function buildOnboardingPayload(
     active_times: draft.active_time ? [draft.active_time] : [],
     night_mode_start: draft.night_mode_start,
     night_mode_end: draft.night_mode_end,
+    checkin_time: draft.checkin_time,
+    checkin_window_minutes: draft.checkin_window_minutes,
+    day_rollover_time: draft.day_rollover_time,
     struggles: [...draft.struggles],
     focus_categories: [...draft.focus_categories],
   };

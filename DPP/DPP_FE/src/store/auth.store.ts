@@ -7,6 +7,9 @@ export type OnboardingDraft = {
   active_time: string;
   night_mode_start: string;
   night_mode_end: string;
+  checkin_time: string;
+  checkin_window_minutes: number;
+  day_rollover_time: string;
   struggles: string[];
   focus_categories: string[];
   categories: {
@@ -23,6 +26,9 @@ function emptyOnboardingDraft(): OnboardingDraft {
     active_time: "",
     night_mode_start: "",
     night_mode_end: "",
+    checkin_time: "21:00",
+    checkin_window_minutes: 120,
+    day_rollover_time: "04:00",
     struggles: [],
     focus_categories: [],
     categories: [],
@@ -48,6 +54,14 @@ function parseOnboardingDraft(raw: string | null): OnboardingDraft {
       typeof o.night_mode_start === "string" ? o.night_mode_start : "";
     const night_mode_end =
       typeof o.night_mode_end === "string" ? o.night_mode_end : "";
+    const checkin_time =
+      typeof o.checkin_time === "string" ? o.checkin_time : "21:00";
+    const checkin_window_minutes =
+      typeof o.checkin_window_minutes === "number" && o.checkin_window_minutes > 0
+        ? o.checkin_window_minutes
+        : 120;
+    const day_rollover_time =
+      typeof o.day_rollover_time === "string" ? o.day_rollover_time : "04:00";
     const struggles = Array.isArray(o.struggles)
       ? o.struggles.filter((x): x is string => typeof x === "string")
       : [];
@@ -85,6 +99,9 @@ function parseOnboardingDraft(raw: string | null): OnboardingDraft {
       active_time,
       night_mode_start,
       night_mode_end,
+      checkin_time,
+      checkin_window_minutes,
+      day_rollover_time,
       struggles,
       focus_categories,
       categories,
