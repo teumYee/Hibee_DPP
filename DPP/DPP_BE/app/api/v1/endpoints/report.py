@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -273,11 +273,17 @@ def save_checkin(
     selected_patterns = [item.model_dump() for item in payload.selected_patterns]
 
     if existing:
+        was_completed = bool(existing.is_completed)
         existing.selected_patterns = selected_patterns
         existing.kpt_keep = payload.kpt_keep
         existing.kpt_problem = payload.kpt_problem
         existing.kpt_try = payload.kpt_try
         existing.is_completed = payload.is_completed
+        if payload.is_completed:
+            if not was_completed:
+                existing.completed_at = datetime.now(timezone.utc)
+        else:
+            existing.completed_at = None
         record = existing
     else:
         record = CheckIn(
@@ -288,6 +294,7 @@ def save_checkin(
             kpt_problem=payload.kpt_problem,
             kpt_try=payload.kpt_try,
             is_completed=payload.is_completed,
+            completed_at=datetime.now(timezone.utc) if payload.is_completed else None,
         )
         db.add(record)
 

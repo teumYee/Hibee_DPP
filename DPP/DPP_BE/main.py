@@ -6,6 +6,8 @@ from app.api.v1.endpoints.dashboard import router as dashboard_router
 from app.api.v1.endpoints.users import router as onboarding_router
 from app.api.v1.endpoints.report import router as report_router
 from app.api.v1.endpoints.calendar import router as calendar_router
+from app.api.v1.endpoints.gamification import router as gamification_router
+from app.api.v1.endpoints.challenges import router as challenges_router
 from app.api.v1.endpoints.social import router as social_router
 
 from pydoc import describe
@@ -54,6 +56,8 @@ app.include_router(dashboard_router,prefix="/api/v1/dashboard", tags=["dashboard
 app.include_router(onboarding_router,prefix="/api/v1/users", tags=["onboarding"])
 app.include_router(report_router, prefix="/api/v1/reports", tags=["reports"])
 app.include_router(calendar_router, prefix="/api/v1/calendar", tags=["calendar"])
+app.include_router(gamification_router, prefix="/api/v1/gamification", tags=["gamification"])
+app.include_router(challenges_router, prefix="/api/v1/challenges", tags=["challenges"])
 app.include_router(social_router, prefix="/api/v1/social", tags=["social"])
 
 

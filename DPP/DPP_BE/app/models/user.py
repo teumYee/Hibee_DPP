@@ -13,6 +13,7 @@ class Users(Base):
     target_time = Column(Integer, nullable=True)
     current_xp = Column(Integer, nullable=True)
     equipped_character = Column(String(100), nullable=True)
+    # 레거시 호환용 잔액 컬럼. 실제 잔액은 user_stats.coin을 기준으로 사용한다.
     coin = Column(Integer, default=0)
     Night_time = Column(Integer, default=0)
     night_mode_start = Column(String, default="23:00")
@@ -33,6 +34,12 @@ class Users(Base):
 
     # 내가 참여한 챌린지 기록들
     challenge_instances = relationship("ChallengeInstances", back_populates="user")
+    stroll_groups_created = relationship(
+        "StrollGroups",
+        foreign_keys="StrollGroups.created_by_user_id",
+        back_populates="creator",
+    )
+    stroll_group_memberships = relationship("StrollGroupMembers", back_populates="user")
 
     # 소셜 
     # 내가 보낸 신청들
@@ -104,9 +111,12 @@ class User_Stats(Base):
     __tablename__ = "user_stats"
     id = Column(Integer, primary_key=True, index=True)
     # 키 참조
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False, index=True)
     current_title_id = Column(Integer, ForeignKey("titles_master.id"))
     equipped_character = Column(Integer, ForeignKey("characters.id"))
+    social_representative_character_id = Column(
+        Integer, ForeignKey("user_characters.id"), nullable=True
+    )
     
     # 체크인
     total_checkin_count = Column(Integer, default=0)
@@ -114,6 +124,7 @@ class User_Stats(Base):
     last_login_date = Column(DateTime, nullable=True)
 
     # 게이미피케이션
+    # 코인 잔액의 단일 진실 공급원(SSOT)
     coin = Column(Integer, default=0)
     continuous_days = Column(Integer, default=0)
     friend_count = Column(Integer, default=0)
