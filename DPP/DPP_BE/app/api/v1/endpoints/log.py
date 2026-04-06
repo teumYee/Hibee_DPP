@@ -1,24 +1,68 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
-from datetime import datetime
+from typing import Dict, List
+from datetime import datetime, date
 
-from app.schemas.log import AppUsageLogCreate, AppUsageLogResponse 
+from app.schemas.log import (
+    AppUsageLogCreate,
+    AppUsageLogResponse,
+    DailySnapshotCreateV3,
+    DailySnapshotResponse,
+)
 
 from app.core.database import get_db
-from app.models.usage_log import UsageLog
+from app.core.deps import get_current_user
+from app.models.usage_log import UsageLog, Daily_SnapShots
 from app.models.user import Users
 from app.utils.category import get_category_name
 
 router = APIRouter()
 
+CANONICAL_TIME_OF_DAY_BUCKETS = ("morning", "afternoon", "evening", "night")
+TIME_OF_DAY_BUCKET_ALIASES = {
+    "morning": "morning",
+    "afternoon": "afternoon",
+    "evening": "evening",
+    "night": "night",
+    "아침": "morning",
+    "오전": "morning",
+    "오후": "afternoon",
+    "저녁": "evening",
+    "밤": "night",
+    "새벽": "night",
+    "06-09": "morning",
+    "09-12": "morning",
+    "12-18": "afternoon",
+    "18-22": "evening",
+    "22-24": "night",
+    "00-06": "night",
+    "06-12": "morning",
+}
+
+
+def _normalize_time_of_day_buckets(raw_buckets: Dict[str, int]) -> Dict[str, int]:
+    normalized = {bucket: 0 for bucket in CANONICAL_TIME_OF_DAY_BUCKETS}
+
+    for raw_key, raw_value in raw_buckets.items():
+        bucket_key = TIME_OF_DAY_BUCKET_ALIASES.get(str(raw_key).strip(), str(raw_key).strip())
+        if bucket_key not in normalized:
+            continue
+
+        try:
+            normalized[bucket_key] += int(raw_value or 0)
+        except (TypeError, ValueError):
+            continue
+
+    return normalized
+
 @router.post("", response_model=dict)
 def upload_logs(
     log_data: AppUsageLogCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
 ):
-    current_user_id = log_data.user_id
-    user = db.query(Users).filter(Users.id == current_user_id).first()
+    current_user_id = current_user.id
+    user = current_user
 
     # 유저가 없는 경우 예외 처리
     if not user:
@@ -88,6 +132,67 @@ def upload_logs(
     db.commit()
     return {"message": f"기록 저장 성공"}
 
+@router.post("/snapshots/v3", response_model=DailySnapshotResponse)
+def create_daily_snapshot_v3(
+    payload: DailySnapshotCreateV3,
+    db: Session = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    current_user_id = current_user.id
+    normalized_package_name = payload.package_name or "__all__"
+    normalized_buckets = _normalize_time_of_day_buckets(payload.time_of_day_buckets_sec)
+    bucket_total_sec = sum(normalized_buckets.values())
+
+    # 1. 같은 날짜, 같은 유저, 같은 패키지의 기존 스냅샷 조회
+    existing_snapshot = db.query(Daily_SnapShots).filter(
+        Daily_SnapShots.user_id == current_user_id,
+        Daily_SnapShots.package_name == normalized_package_name,
+        Daily_SnapShots.snapshot_date == payload.date,
+    ).first()
+
+    if existing_snapshot:
+        # 2. 존재하면 업데이트 (Upsert)
+        existing_snapshot.total_usage_check = payload.total_usage_check
+        existing_snapshot.unlock_count = payload.unlock_count
+        existing_snapshot.time_of_day_buckets_sec = bucket_total_sec
+        existing_snapshot.time_of_day_buckets_json = normalized_buckets
+        existing_snapshot.max_continuous_sec = payload.max_continuous_sec
+        existing_snapshot.app_launch_count = payload.app_launch_count
+        existing_snapshot.snapshot_date = payload.date
+        existing_snapshot.timezone = payload.timezone
+        existing_snapshot.package_name = normalized_package_name
+        existing_snapshot.schema_version = payload.schema_version
+        existing_snapshot.source_hash = payload.source_hash
+        db.commit()
+        db.refresh(existing_snapshot)
+        snapshot = existing_snapshot
+        upserted = True
+    else:
+        # 3. 없으면 새로 생성
+        snapshot = Daily_SnapShots(
+            user_id=current_user_id,
+            snapshot_date=payload.date,
+            timezone=payload.timezone,
+            package_name=normalized_package_name,
+            total_usage_check=payload.total_usage_check,
+            unlock_count=payload.unlock_count,
+            time_of_day_buckets_sec=bucket_total_sec,
+            time_of_day_buckets_json=normalized_buckets,
+            max_continuous_sec=payload.max_continuous_sec,
+            app_launch_count=payload.app_launch_count,
+            schema_version=payload.schema_version,
+            source_hash=payload.source_hash,
+        )
+        db.add(snapshot)
+        db.commit()
+        db.refresh(snapshot)
+        upserted = False
+
+    return {
+        "snapshot_id": snapshot.id,
+        "status": "success",
+        "upserted": upserted,
+    }
 # 로그 조회 API (날짜 조건 추가)
 # @router.get("/{user_id}", response_model=List[schemas.AppUsageLogResponse])
 # def get_logs(user_id: int, date: datetime = None, db: Session = Depends(get_db)):
@@ -113,3 +218,4 @@ def get_logs(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="해당 조건의 로그 기록이 없습니다.")
         
     return logs
+

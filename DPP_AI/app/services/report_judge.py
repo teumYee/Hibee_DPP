@@ -1,6 +1,6 @@
 """
 report_judge.py — GPT-4o-mini로 리포트 검수
-입력: report_draft, snapshot, kpt
+입력: report_draft, snapshot, kpt, retrieved_evidence
 출력: { verdict: PASS|REWRITE|FALLBACK, issues[], rewrite_brief }
 할루시네이션/톤/과잉조언/포맷 위반 점검
 """
@@ -16,7 +16,7 @@ logger = logging.getLogger("dpp_ai")
 DEFAULT_MODEL = "gpt-4o-mini"
 
 SYSTEM_PROMPT = """당신은 돌핀팟 "데일리 리포트 검수자"입니다.
-리포트 초안(report_draft)이 snapshot·kpt와 일치하는지, 규칙 위반이 없는지 판단합니다.
+리포트 초안(report_draft)이 snapshot·kpt·retrieved_evidence와 일치하는지, 규칙 위반이 없는지 판단합니다.
 
 [점검 항목]
 1) 할루시네이션: snapshot에 없는 수치·사실을 만들지 않았는지.
@@ -47,7 +47,8 @@ def run_report_judge(
     snapshot: dict,
     kpt: dict,
     *,
-    model: Optional[str] = None,
+    retrieved_evidence: List[Dict[str, Any]] | None = None,
+    model: str | None = None,
 ) -> Dict[str, Any]:
     """
     리포트 초안을 검수합니다.
@@ -56,6 +57,7 @@ def run_report_judge(
         report_draft: 리포트 마크다운 문자열
         snapshot: 오늘 스냅샷
         kpt: KPT 컨텍스트
+        retrieved_evidence: 검색된 근거 목록
         model: 사용 모델 (기본 gpt-4o-mini)
 
     Returns:
@@ -67,11 +69,14 @@ def run_report_judge(
     """
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     model = model or os.getenv("REPORT_JUDGE_MODEL", DEFAULT_MODEL)
+    if retrieved_evidence is None:
+        retrieved_evidence = []
 
     payload = {
         "report_draft": report_draft,
         "snapshot": snapshot,
         "kpt": kpt,
+        "retrieved_evidence": retrieved_evidence,
     }
     user_content = json.dumps(payload, ensure_ascii=False)
 

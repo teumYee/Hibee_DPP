@@ -3,13 +3,15 @@ checkin_pipeline.py — checkin_writer → deterministic_check → llm_judge 를
 qa_results 테이블에 결과 로깅
 """
 import logging
-from typing import Any, Callable, Dict, Optional
+import uuid
+from typing import Any, Dict, List, Optional
 
 from .checkin_writer import generate_pattern_candidates
 from .deterministic_check import run_deterministic_check
 from .llm_judge import run_llm_judge
 
 logger = logging.getLogger("dpp_ai")
+MAX_ATTEMPTS = 3
 
 
 def _log_to_qa_results(
@@ -65,7 +67,8 @@ def run_checkin_pipeline(
     1. checkin_writer → 패턴 후보 생성
     2. deterministic_check → 스키마/수치/금지어 검증
     3. llm_judge → PASS/RETRY/FAIL 질적 평가
-    4. 각 단계 결과를 qa_results에 로깅 (옵션)
+    4. RETRY면 judge/deterministic 피드백을 반영해 최대 3회까지 재생성
+    5. 각 단계 결과를 qa_results에 로깅 (옵션)
 
     Args:
         input_data: 패턴 생성 입력 (dashboard, user_profile 등)
@@ -82,60 +85,117 @@ def run_checkin_pipeline(
             "deterministic_result": {"passed": bool, "errors": [...]} | None,
             "judge_result": {"verdict": "PASS"|"RETRY"|"FAIL", "reason": ...} | None,
             "final_verdict": "PASS"|"RETRY"|"FAIL",
+            "attempts": int,
+            "judge_results": [...],
         }
     """
-    import uuid
     run_id = run_id or str(uuid.uuid4())
+    snapshot = input_data.get("snapshot", input_data) if isinstance(input_data, dict) else {}
+    user_configs = input_data.get("user_configs", {}) if isinstance(input_data, dict) else {}
+
     writer_output: Optional[Dict[str, Any]] = None
     deterministic_result: Optional[Dict[str, Any]] = None
     judge_result: Optional[Dict[str, Any]] = None
     final_verdict = "FAIL"
+    judge_results: List[Dict[str, Any]] = []
+    rewrite_instructions: List[str] = []
+    attempts = 0
 
-    # --- 1. Writer ---
-    snapshot = input_data.get("snapshot", input_data) if isinstance(input_data, dict) else {}
-    user_configs = input_data.get("user_configs", {}) if isinstance(input_data, dict) else {}
-    try:
-        writer_output = generate_pattern_candidates(snapshot, user_configs)
-        if log_to_db:
-            _log_to_qa_results(run_id, "writer", input_data, writer_output, "ok", db_session=db_session)
-    except Exception as e:
-        logger.exception("checkin_pipeline writer failed")
-        if log_to_db:
-            _log_to_qa_results(run_id, "writer", input_data, None, "error", str(e), db_session=db_session)
-        return {
-            "run_id": run_id,
-            "writer_output": None,
-            "deterministic_result": None,
-            "judge_result": None,
-            "final_verdict": "FAIL",
-            "error": str(e),
-        }
-
-    # --- 2. Deterministic check ---
-    if not skip_deterministic and writer_output:
-        deterministic_result = run_deterministic_check(writer_output)
-        if log_to_db:
-            _log_to_qa_results(
-                run_id, "deterministic_check", writer_output, deterministic_result,
-                "ok" if deterministic_result["passed"] else "fail",
-                db_session=db_session,
+    for attempts in range(1, MAX_ATTEMPTS + 1):
+        # --- 1. Writer ---
+        try:
+            writer_output = generate_pattern_candidates(
+                snapshot,
+                user_configs,
+                rewrite_instructions=rewrite_instructions,
             )
-        if not deterministic_result["passed"]:
-            final_verdict = "FAIL"
+            if log_to_db:
+                _log_to_qa_results(
+                    run_id,
+                    f"writer_attempt_{attempts}",
+                    {
+                        "input_data": input_data,
+                        "rewrite_instructions": rewrite_instructions,
+                    },
+                    writer_output,
+                    "ok",
+                    db_session=db_session,
+                )
+        except Exception as e:
+            logger.exception("checkin_pipeline writer attempt %s failed", attempts)
+            if log_to_db:
+                _log_to_qa_results(
+                    run_id,
+                    f"writer_attempt_{attempts}",
+                    {
+                        "input_data": input_data,
+                        "rewrite_instructions": rewrite_instructions,
+                    },
+                    None,
+                    "error",
+                    str(e),
+                    db_session=db_session,
+                )
             return {
                 "run_id": run_id,
-                "writer_output": writer_output,
-                "deterministic_result": deterministic_result,
+                "writer_output": None,
+                "deterministic_result": None,
                 "judge_result": None,
-                "final_verdict": final_verdict,
+                "final_verdict": "FAIL",
+                "attempts": attempts,
+                "judge_results": judge_results,
+                "error": str(e),
             }
 
-    # --- 3. LLM Judge ---
-    if not skip_llm_judge and writer_output:
-        judge_result = run_llm_judge(writer_output)
-        if log_to_db:
-            _log_to_qa_results(run_id, "llm_judge", writer_output, judge_result, "ok", db_session=db_session)
-        final_verdict = judge_result.get("verdict", "FAIL")
+        # --- 2. Deterministic check ---
+        deterministic_result = None
+        if not skip_deterministic and writer_output:
+            deterministic_result = run_deterministic_check(writer_output)
+            if log_to_db:
+                _log_to_qa_results(
+                    run_id,
+                    f"deterministic_check_attempt_{attempts}",
+                    writer_output,
+                    deterministic_result,
+                    "ok" if deterministic_result["passed"] else "fail",
+                    db_session=db_session,
+                )
+            if not deterministic_result["passed"]:
+                rewrite_instructions = [
+                    str(item) for item in deterministic_result.get("errors", []) if str(item).strip()
+                ]
+                final_verdict = "RETRY" if attempts < MAX_ATTEMPTS else "FAIL"
+                if attempts < MAX_ATTEMPTS:
+                    continue
+                break
+
+        # --- 3. LLM Judge ---
+        if skip_llm_judge:
+            final_verdict = "PASS"
+            judge_result = None
+            break
+
+        if writer_output:
+            judge_result = run_llm_judge(writer_output)
+            judge_results.append(judge_result)
+            if log_to_db:
+                _log_to_qa_results(
+                    run_id,
+                    f"llm_judge_attempt_{attempts}",
+                    writer_output,
+                    judge_result,
+                    "ok",
+                    db_session=db_session,
+                )
+            final_verdict = judge_result.get("verdict", "FAIL")
+            if final_verdict == "PASS":
+                break
+            if final_verdict == "RETRY" and attempts < MAX_ATTEMPTS:
+                candidate_feedback = judge_result.get("fix_instructions") or judge_result.get("reasons") or []
+                rewrite_instructions = [str(item) for item in candidate_feedback if str(item).strip()]
+                continue
+            if final_verdict == "RETRY" and attempts == MAX_ATTEMPTS:
+                break
 
     return {
         "run_id": run_id,
@@ -143,4 +203,6 @@ def run_checkin_pipeline(
         "deterministic_result": deterministic_result,
         "judge_result": judge_result,
         "final_verdict": final_verdict,
+        "attempts": attempts,
+        "judge_results": judge_results,
     }

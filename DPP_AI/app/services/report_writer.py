@@ -1,6 +1,6 @@
 """
 report_writer.py — Claude Sonnet으로 데일리 리포트 작성
-입력: snapshot, selected_patterns, kpt [, retrieved_evidence]
+입력: snapshot, user_configs, selected_patterns, kpt [, retrieved_evidence]
 출력: { "report_markdown": "..." }
 retrieved_evidence는 파라미터로 받되 비어 있어도 동작 (나중에 DB 연동 시 사용)
 """
@@ -43,6 +43,7 @@ def _call_claude(
 
 def generate_report(
     snapshot: dict,
+    user_configs: dict,
     selected_patterns: List[Dict[str, Any]],
     kpt: dict,
     *,
@@ -55,6 +56,7 @@ def generate_report(
 
     Args:
         snapshot: 오늘 사용 데이터 스냅샷
+        user_configs: 사용자 온보딩/설정 정보
         selected_patterns: 사용자가 선택한 패턴 리스트
         kpt: KPT 등 추가 컨텍스트
         retrieved_evidence: 검색된 근거 목록. 비어 있거나 None이면 무시 (placeholder)
@@ -103,6 +105,7 @@ def generate_report(
 
     payload = {
         "snapshot": snapshot,
+        "user_configs": user_configs,
         "selected_patterns": selected_patterns,
         "kpt": kpt,
         "retrieved_evidence": retrieved_evidence,

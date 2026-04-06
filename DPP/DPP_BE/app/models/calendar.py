@@ -42,6 +42,7 @@ class CheckIn(Base):
     kpt_problem = Column(Text, nullable=True)
     kpt_try = Column(Text, nullable=True)
     is_completed = Column(Boolean, default=False, nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
     user = relationship("Users", back_populates="daily_checkins")
 
@@ -55,7 +56,7 @@ class PatternCandidatesDaily(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     date = Column(Date, nullable=False)
-    selected_patterns = Column(JSONB, nullable=True)
+    candidates = Column(JSONB, nullable=True)
 
     user = relationship("Users", back_populates="pattern_candidates_daily")
     review_logs = relationship(
