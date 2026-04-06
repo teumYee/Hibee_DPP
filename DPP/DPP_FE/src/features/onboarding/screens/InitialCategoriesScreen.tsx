@@ -1,16 +1,7 @@
 // 설치 앱 카테고리 확인·조정
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  Modal,
-  NativeModules,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Image, Modal, NativeModules, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import type {
   NativeStackNavigationProp,
   NativeStackScreenProps,
@@ -272,7 +263,7 @@ export function InitialCategoriesScreen({ navigation, route }: Props) {
       headerRight={
         !isEdit ? (
           <Pressable onPress={onSkip} hitSlop={8} accessibilityRole="button">
-            <Text style={styles.skipText}>건너뛰기</Text>
+            <AppText style={styles.skipText}>건너뛰기</AppText>
           </Pressable>
         ) : undefined
       }
@@ -291,9 +282,9 @@ export function InitialCategoriesScreen({ navigation, route }: Props) {
           {saving ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.primaryBtnText}>
+            <AppText style={styles.primaryBtnText}>
               {isEdit ? "저장하기" : "확인하기"}
-            </Text>
+            </AppText>
           )}
         </Pressable>
       }
@@ -324,14 +315,14 @@ export function InitialCategoriesScreen({ navigation, route }: Props) {
                   ]}
                     onPress={() => setTabId(g.id)}
                   >
-                  <Text
+                  <AppText
                     style={[
                       styles.tabText,
                       on ? { color: "#FFFFFF" } : null,
                     ]}
                   >
                     {g.name}
-                  </Text>
+                  </AppText>
                   </Pressable>
                 );
               })}
@@ -344,17 +335,17 @@ export function InitialCategoriesScreen({ navigation, route }: Props) {
               ]}
             >
               <View style={styles.categoryCardHeader}>
-                <Text
+                <AppText
                   style={[
                     styles.categoryCardTitle,
                     { color: activeTheme.accent },
                   ]}
                 >
                   {activeCategoryName}
-                </Text>
-                <Text style={styles.categoryCardCount}>
+                </AppText>
+                <AppText style={styles.categoryCardCount}>
                   {currentApps.length}개
-                </Text>
+                </AppText>
               </View>
 
               <ScrollView
@@ -387,18 +378,18 @@ export function InitialCategoriesScreen({ navigation, route }: Props) {
                           style={styles.appIcon}
                         />
                       ) : (
-                        <Text style={styles.appIconFallback}>앱</Text>
+                        <AppText style={styles.appIconFallback}>앱</AppText>
                       )}
                     </View>
 
                     <View style={styles.appTextCol}>
-                      <Text style={styles.appName}>{app.appName}</Text>
-                      <Text style={styles.appPkg}>{app.packageName}</Text>
+                      <AppText style={styles.appName}>{app.appName}</AppText>
+                      <AppText style={styles.appPkg}>{app.packageName}</AppText>
                     </View>
                   </Pressable>
                 ))}
                 {currentApps.length === 0 ? (
-                  <Text style={styles.empty}>이 카테고리에 앱이 없어요</Text>
+                  <AppText style={styles.empty}>이 카테고리에 앱이 없어요</AppText>
                 ) : null}
               </ScrollView>
             </View>
@@ -414,10 +405,10 @@ export function InitialCategoriesScreen({ navigation, route }: Props) {
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>카테고리 이동</Text>
-            <Text style={styles.sheetSub} numberOfLines={1}>
+            <AppText style={styles.sheetTitle}>카테고리 이동</AppText>
+            <AppText style={styles.sheetSub} numberOfLines={1}>
               {moveTarget?.appName}
-            </Text>
+            </AppText>
             <ScrollView style={styles.sheetList}>
               {CATEGORY_ORDER.map((id) => (
                 (() => {
@@ -441,14 +432,14 @@ export function InitialCategoriesScreen({ navigation, route }: Props) {
                       { backgroundColor: theme.accent },
                     ]}
                   />
-                  <Text
+                  <AppText
                     style={[
                       styles.sheetRowText,
                       { color: theme.accent },
                     ]}
                   >
                     {CATEGORY_MAP[id]}
-                  </Text>
+                  </AppText>
                 </Pressable>
                   );
                 })()
@@ -458,7 +449,7 @@ export function InitialCategoriesScreen({ navigation, route }: Props) {
               style={styles.sheetCancel}
               onPress={() => setMoveTarget(null)}
             >
-              <Text style={styles.sheetCancelText}>닫기</Text>
+              <AppText style={styles.sheetCancelText}>닫기</AppText>
             </Pressable>
           </View>
         </View>
@@ -497,7 +488,6 @@ const styles = StyleSheet.create({
   tabText: {
     color: "#2F3A45",
     fontSize: 14,
-    fontWeight: "600",
   },
   tabTextOn: {
     color: "#FFFFFF",
@@ -522,13 +512,11 @@ const styles = StyleSheet.create({
 
   categoryCardTitle: {
     fontSize: 18,
-    fontWeight: "800",
     color: "#111111",
   },
 
   categoryCardCount: {
     fontSize: 14,
-    fontWeight: "700",
     color: "#2F3A45",
     backgroundColor: "rgba(255,255,255,0.6)",
     paddingHorizontal: 10,
@@ -572,7 +560,6 @@ const styles = StyleSheet.create({
   },
   appIconFallback: {
     fontSize: 11,
-    fontWeight: "700",
     color: "#6C7A89",
   },
   appTextCol: {
@@ -580,7 +567,6 @@ const styles = StyleSheet.create({
   },
   appName: {
     fontSize: 15,
-    fontWeight: "600",
     color: "#111111",
   },
   appPkg: {
@@ -610,7 +596,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 4,
     fontSize: 18,
-    fontWeight: "700",
     color: "#111111",
   },
   sheetSub: {
@@ -647,7 +632,6 @@ const styles = StyleSheet.create({
   sheetCancelText: {
     color: MAIN,
     fontSize: 16,
-    fontWeight: "600",
   },
   primaryBtn: {
     backgroundColor: MAIN,
@@ -664,11 +648,9 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: "700",
   },
   skipText: {
     color: SKIP,
     fontSize: 14,
-    fontWeight: "600",
   },
 });

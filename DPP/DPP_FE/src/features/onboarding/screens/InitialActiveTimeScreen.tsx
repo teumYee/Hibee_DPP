@@ -1,13 +1,7 @@
 // 주로 활동하는 시간대
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from "react-native";
 import type {
   NativeStackNavigationProp,
   NativeStackScreenProps,
@@ -102,7 +96,7 @@ export function InitialActiveTimeScreen({ navigation, route }: Props) {
       headerRight={
         !isEdit ? (
           <Pressable onPress={onSkip} hitSlop={8} accessibilityRole="button">
-            <Text style={styles.skipText}>건너뛰기</Text>
+            <AppText style={styles.skipText}>건너뛰기</AppText>
           </Pressable>
         ) : undefined
       }
@@ -121,9 +115,9 @@ export function InitialActiveTimeScreen({ navigation, route }: Props) {
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.primaryBtnText}>
+            <AppText style={styles.primaryBtnText}>
               {isEdit ? "저장하기" : "다음으로"}
-            </Text>
+            </AppText>
           )}
         </Pressable>
       }
@@ -143,13 +137,13 @@ export function InitialActiveTimeScreen({ navigation, route }: Props) {
               accessibilityRole="radio"
               accessibilityState={{ selected: on }}
             >
-              <Text style={styles.emoji}>{slot.emoji}</Text>
-              <Text style={[styles.cardTitle, on && styles.cardTitleOn]}>
+              <AppText style={styles.emoji}>{slot.emoji}</AppText>
+              <AppText style={[styles.cardTitle, on && styles.cardTitleOn]}>
                 {slot.label}
-              </Text>
-              <Text style={[styles.cardRange, on && styles.cardRangeOn]}>
+              </AppText>
+              <AppText style={[styles.cardRange, on && styles.cardRangeOn]}>
                 {slot.range}
-              </Text>
+              </AppText>
             </Pressable>
           );
         })}
@@ -191,7 +185,6 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: "700",
     color: "#333333",
     marginBottom: 4,
   },
@@ -221,11 +214,9 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: "700",
   },
   skipText: {
     color: SKIP,
     fontSize: 14,
-    fontWeight: "600",
   },
 });

@@ -1,4 +1,5 @@
 // 온보딩 스토리 (7슬라이드)
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -9,7 +10,6 @@ import {
   NativeSyntheticEvent,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -62,7 +62,7 @@ const SLIDES: StorySlide[] = [
     gradientStart: "#0A3060",
     gradientEnd: "#1A6B8A",
     title: "그래도 괜찮아요",
-    subtitle: "Pod가 있으니까요\n함께 헤엄치는 돌고래 무리",
+    subtitle: "함께 헤엄치는 돌고래 무리\nPod이 있으니까요",
   },
   {
     gradientStart: "#1A5C8A",
@@ -88,7 +88,7 @@ function StorySlideContent({
       opacity.setValue(0);
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 450,
+        duration: 800,
         useNativeDriver: true,
       }).start();
     } else {
@@ -98,8 +98,8 @@ function StorySlideContent({
 
   return (
     <Animated.View style={[styles.textBlock, { opacity }]}>
-      <Text style={styles.title}>{slide.title}</Text>
-      <Text style={styles.subtitle}>{slide.subtitle}</Text>
+      <AppText style={styles.title}>{slide.title}</AppText>
+      <AppText style={styles.subtitle}>{slide.subtitle}</AppText>
     </Animated.View>
   );
 }
@@ -182,27 +182,27 @@ export function StoryScreen({ navigation }: Props) {
               accessibilityRole="button"
               accessibilityLabel="온보딩 건너뛰기"
             >
-              <Text style={styles.skipText}>건너뛰기</Text>
+              <AppText style={styles.skipText}>건너뛰기</AppText>
             </Pressable>
           ) : (
             <View style={styles.skipPlaceholder} />
           )}
         </SafeAreaView>
 
-        <View style={styles.bottomArea}>
-          {showCta ? (
+        {showCta ? (
+          <View style={styles.ctaWrap} pointerEvents="box-none">
             <Pressable
               style={styles.ctaButton}
               onPress={goNext}
               accessibilityRole="button"
               accessibilityLabel="바다로 뛰어들기"
             >
-              <Text style={styles.ctaButtonText}>바다로 뛰어들기</Text>
+              <AppText style={styles.ctaButtonText}>바다로 뛰어들기</AppText>
             </Pressable>
-          ) : (
-            <View style={styles.ctaPlaceholder} />
-          )}
+          </View>
+        ) : null}
 
+        <View style={styles.dotsWrap} pointerEvents="box-none">
           <View style={styles.dotsRow}>
             {SLIDES.map((_, i) => {
               const active = i === currentIndex;
@@ -218,8 +218,6 @@ export function StoryScreen({ navigation }: Props) {
             })}
           </View>
         </View>
-
-        <SafeAreaView edges={["bottom"]} style={styles.bottomSafe} />
       </View>
     </View>
   );
@@ -237,13 +235,14 @@ const styles = StyleSheet.create({
   },
   textBlock: {
     paddingHorizontal: 32,
+    width: "100%",
+    maxWidth: SCREEN_WIDTH,
     alignItems: "center",
-    justifyContent: "center",
   },
   title: {
     color: "#FFFFFF",
     fontSize: 28,
-    fontWeight: "700",
+
     textAlign: "center",
     marginBottom: 16,
   },
@@ -256,7 +255,6 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: "space-between",
   },
   skipSafe: {
     alignItems: "flex-end",
@@ -271,14 +269,13 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     textDecorationLine: "underline",
   },
-  bottomArea: {
-    paddingHorizontal: 24,
-    paddingBottom: 8,
+  /** 마지막 슬라이드 CTA — 점 인디케이터( bottom: 40 ) 위에 배치 */
+  ctaWrap: {
+    position: "absolute",
+    left: 24,
+    right: 24,
+    bottom: 96,
     alignItems: "center",
-  },
-  ctaPlaceholder: {
-    height: 52,
-    marginBottom: 16,
   },
   ctaButton: {
     width: "100%",
@@ -287,20 +284,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 12,
     backgroundColor: "rgba(255, 255, 255, 0.95)",
-    marginBottom: 16,
     alignItems: "center",
   },
   ctaButtonText: {
     color: "#081A3D",
     fontSize: 17,
-    fontWeight: "700",
+
+  },
+  dotsWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 40,
+    alignItems: "center",
   },
   dotsRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 10,
-    marginBottom: 8,
   },
   dot: {
     width: 8,
@@ -314,8 +316,5 @@ const styles = StyleSheet.create({
   },
   dotInactive: {
     backgroundColor: "rgba(255, 255, 255, 0.35)",
-  },
-  bottomSafe: {
-    minHeight: 0,
   },
 });

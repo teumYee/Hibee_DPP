@@ -1,3 +1,5 @@
+import { AppText } from "../../../components/AppText";
+import { AppTextInput } from "../../../components/AppTextInput";
 import React, {
   useCallback,
   useEffect,
@@ -5,17 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Animated, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
@@ -239,7 +231,7 @@ function ProfileModal({
         <Pressable style={styles.modalBackdrop} onPress={onClose} />
         <Animated.View style={[styles.profileSheet, { transform: [{ translateY: sheetY }] }]}>
           <Pressable style={styles.profileClose} onPress={onClose} hitSlop={10}>
-            <Text style={styles.profileCloseText}>✕</Text>
+            <AppText style={styles.profileCloseText}>✕</AppText>
           </Pressable>
           <View style={styles.profileHero}>
             <Animated.View
@@ -249,26 +241,26 @@ function ProfileModal({
                 { transform: [{ translateY: waveTranslate }] },
               ]}
             >
-              <Text style={styles.profileDolphin}>🐬</Text>
+              <AppText style={styles.profileDolphin}>🐬</AppText>
             </Animated.View>
           </View>
-          <Text style={styles.profileName}>{friend.nickname}</Text>
-          <Text style={styles.profileSub}>{subtitle}</Text>
+          <AppText style={styles.profileName}>{friend.nickname}</AppText>
+          <AppText style={styles.profileSub}>{subtitle}</AppText>
           <View style={styles.statRow}>
             <View style={styles.statCell}>
-              <Text style={styles.statNum}>{streakV}</Text>
-              <Text style={styles.statLabel}>연속일</Text>
+              <AppText style={styles.statNum}>{streakV}</AppText>
+              <AppText style={styles.statLabel}>연속일</AppText>
             </View>
             <View style={styles.statCell}>
-              <Text style={styles.statNum}>{cheerV}</Text>
-              <Text style={styles.statLabel}>응원수</Text>
+              <AppText style={styles.statNum}>{cheerV}</AppText>
+              <AppText style={styles.statLabel}>응원수</AppText>
             </View>
             <View style={styles.statCell}>
-              <Text style={styles.statNum}>{friendV}</Text>
-              <Text style={styles.statLabel}>친구</Text>
+              <AppText style={styles.statNum}>{friendV}</AppText>
+              <AppText style={styles.statLabel}>친구</AppText>
             </View>
           </View>
-          <Text style={styles.badgeSectionTitle}>뱃지</Text>
+          <AppText style={styles.badgeSectionTitle}>뱃지</AppText>
           <View style={styles.badgeRow}>
             {friend.badges.map((b: Badge) => (
               <Pressable
@@ -286,10 +278,10 @@ function ProfileModal({
                     b.is_earned ? { backgroundColor: friend.avatar_color } : styles.badgeMuted,
                   ]}
                 >
-                  <Text style={styles.badgeIcon}>{b.icon}</Text>
+                  <AppText style={styles.badgeIcon}>{b.icon}</AppText>
                 </View>
                 {tipBadgeId === b.id && !b.is_earned ? (
-                  <Text style={styles.badgeTip}>아직 획득하지 못했어요</Text>
+                  <AppText style={styles.badgeTip}>아직 획득하지 못했어요</AppText>
                 ) : null}
               </Pressable>
             ))}
@@ -307,14 +299,14 @@ function ProfileModal({
                 });
               }}
             >
-              <Text
+              <AppText
                 style={[
                   styles.profileCheerText,
                   friend.has_cheered_today && styles.profileCheerTextOff,
                 ]}
               >
                 {friend.has_cheered_today ? "오늘 응원 완료 ✓" : "응원하기"}
-              </Text>
+              </AppText>
             </Pressable>
           </View>
         </Animated.View>
@@ -373,11 +365,11 @@ function OceanAvatar({
           },
         ]}
       >
-        <Text style={styles.oceanEmoji}>🐬</Text>
+        <AppText style={styles.oceanEmoji}>🐬</AppText>
       </Animated.View>
-      <Text style={styles.oceanNick} numberOfLines={1}>
+      <AppText style={styles.oceanNick} numberOfLines={1}>
         {friend.nickname}
-      </Text>
+      </AppText>
     </Pressable>
   );
 }
@@ -526,9 +518,9 @@ export function SocialScreen({ navigation }: Props) {
           onPress={() => navigation.goBack()}
           hitSlop={12}
         >
-          <Text style={styles.back}>←</Text>
+          <AppText style={styles.back}>←</AppText>
         </Pressable>
-        <Text style={styles.headerTitle}>같이 헤엄치는 바다</Text>
+        <AppText style={styles.headerTitle}>같이 헤엄치는 바다</AppText>
         <View style={styles.headerSide} />
       </View>
 
@@ -537,17 +529,17 @@ export function SocialScreen({ navigation }: Props) {
           style={[styles.mainTab, mainTab === "friends" ? styles.mainTabOn : styles.mainTabOff]}
           onPress={() => setMainTab("friends")}
         >
-          <Text style={[styles.mainTabText, mainTab === "friends" ? styles.mainTabTextOn : styles.mainTabTextOff]}>
+          <AppText style={[styles.mainTabText, mainTab === "friends" ? styles.mainTabTextOn : styles.mainTabTextOff]}>
             친구
-          </Text>
+          </AppText>
         </Pressable>
         <Pressable
           style={[styles.mainTab, mainTab === "group" ? styles.mainTabOn : styles.mainTabOff]}
           onPress={() => setMainTab("group")}
         >
-          <Text style={[styles.mainTabText, mainTab === "group" ? styles.mainTabTextOn : styles.mainTabTextOff]}>
+          <AppText style={[styles.mainTabText, mainTab === "group" ? styles.mainTabTextOn : styles.mainTabTextOff]}>
             그룹
-          </Text>
+          </AppText>
         </Pressable>
       </View>
 
@@ -558,7 +550,7 @@ export function SocialScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.searchWrap}>
-            <TextInput
+            <AppTextInput
               style={styles.searchInput}
               placeholder="닉네임으로 친구 찾기"
               placeholderTextColor="#999999"
@@ -570,15 +562,15 @@ export function SocialScreen({ navigation }: Props) {
                 {searchBusy ? (
                   <ActivityIndicator style={styles.searchSpinner} color={MAIN} />
                 ) : searchResults.length === 0 ? (
-                  <Text style={styles.searchEmpty}>검색 결과가 없어요</Text>
+                  <AppText style={styles.searchEmpty}>검색 결과가 없어요</AppText>
                 ) : (
                   searchResults.map((r) => (
                     <View key={r.id} style={styles.searchRow}>
                       <View style={styles.searchMeta}>
                         <View style={[styles.miniAv, { backgroundColor: r.avatar_color }]}>
-                          <Text style={styles.miniDol}>🐬</Text>
+                          <AppText style={styles.miniDol}>🐬</AppText>
                         </View>
-                        <Text style={styles.searchNick}>{r.nickname}</Text>
+                        <AppText style={styles.searchNick}>{r.nickname}</AppText>
                       </View>
                       <Pressable
                         style={styles.addBtn}
@@ -588,7 +580,7 @@ export function SocialScreen({ navigation }: Props) {
                         {addingId === r.id ? (
                           <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
-                          <Text style={styles.addBtnText}>친구 추가</Text>
+                          <AppText style={styles.addBtnText}>친구 추가</AppText>
                         )}
                       </Pressable>
                     </View>
@@ -598,7 +590,7 @@ export function SocialScreen({ navigation }: Props) {
             ) : null}
           </View>
 
-          <Text style={styles.listHeader}>함께 헤엄치는 친구들</Text>
+          <AppText style={styles.listHeader}>함께 헤엄치는 친구들</AppText>
           {listLoading ? (
             <ActivityIndicator style={styles.listSpinner} color={MAIN} />
           ) : (
@@ -614,16 +606,16 @@ export function SocialScreen({ navigation }: Props) {
         </ScrollView>
       ) : (
         <ScrollView style={styles.groupScroll} contentContainerStyle={styles.groupScrollContent}>
-          <Text style={styles.groupTitle}>그룹 바다 뷰</Text>
+          <AppText style={styles.groupTitle}>그룹 바다 뷰</AppText>
           <View style={styles.oceanBox}>
             <View style={styles.notifBadge}>
-              <Text style={styles.notifBadgeText}>{todayCheerNotif}</Text>
+              <AppText style={styles.notifBadgeText}>{todayCheerNotif}</AppText>
             </View>
             {friends.map((f) => (
               <OceanAvatar key={f.id} friend={f} onOpen={() => setProfileFriend(f)} />
             ))}
           </View>
-          <Text style={styles.groupListTitle}>친구들</Text>
+          <AppText style={styles.groupListTitle}>친구들</AppText>
           {friends.map((f) => (
             <Pressable
               key={`g-${f.id}`}
@@ -631,12 +623,12 @@ export function SocialScreen({ navigation }: Props) {
               onPress={() => setProfileFriend(f)}
             >
               <View style={[styles.miniAv, { backgroundColor: f.avatar_color }]}>
-                <Text style={styles.miniDol}>🐬</Text>
+                <AppText style={styles.miniDol}>🐬</AppText>
               </View>
-              <Text style={styles.groupListNick}>{f.nickname}</Text>
-              <Text style={styles.groupListEmoji}>
+              <AppText style={styles.groupListNick}>{f.nickname}</AppText>
+              <AppText style={styles.groupListEmoji}>
                 {f.is_checked_in_today ? "✅" : "💤"}
-              </Text>
+              </AppText>
             </Pressable>
           ))}
         </ScrollView>
@@ -671,15 +663,15 @@ function FriendListRow({
   return (
     <Pressable style={styles.friendRow} onPress={onOpenProfile}>
       <View style={[styles.friendAv, { backgroundColor: friend.avatar_color }]}>
-        <Text style={styles.friendDol}>🐬</Text>
+        <AppText style={styles.friendDol}>🐬</AppText>
       </View>
       <View style={styles.friendMid}>
-        <Text style={styles.friendNick}>{friend.nickname}</Text>
-        <Text style={styles.friendStatus}>
+        <AppText style={styles.friendNick}>{friend.nickname}</AppText>
+        <AppText style={styles.friendStatus}>
           {friend.is_checked_in_today
             ? "오늘 체크인 완료 ✅"
             : "아직 기록 없음 💤"}
-        </Text>
+        </AppText>
       </View>
       <View ref={cheerRef} collapsable={false}>
         <Pressable
@@ -695,14 +687,14 @@ function FriendListRow({
             });
           }}
         >
-          <Text
+          <AppText
             style={[
               styles.cheerBtnText,
               friend.has_cheered_today && styles.cheerBtnTextDone,
             ]}
           >
             {friend.has_cheered_today ? "응원완료 ✓" : "응원 💙"}
-          </Text>
+          </AppText>
         </Pressable>
       </View>
     </Pressable>
@@ -727,7 +719,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     fontSize: 17,
-    fontWeight: "700",
     color: TITLE,
   },
   mainTabs: {
@@ -751,7 +742,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E0E0",
   },
-  mainTabText: { fontSize: 15, fontWeight: "600" },
+  mainTabText: { fontSize: 15 },
   mainTabTextOn: { color: "#FFFFFF" },
   mainTabTextOff: { color: "#888888" },
   friendScroll: { flex: 1 },
@@ -810,7 +801,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   miniDol: { fontSize: 18 },
-  searchNick: { fontSize: 15, fontWeight: "600", color: TITLE, flex: 1 },
+  searchNick: { fontSize: 15, color: TITLE, flex: 1 },
   addBtn: {
     backgroundColor: MAIN,
     paddingHorizontal: 12,
@@ -819,10 +810,9 @@ const styles = StyleSheet.create({
     minWidth: 88,
     alignItems: "center",
   },
-  addBtnText: { color: "#FFFFFF", fontWeight: "700", fontSize: 13 },
+  addBtnText: { color: "#FFFFFF", fontSize: 13 },
   listHeader: {
     fontSize: 16,
-    fontWeight: "700",
     color: TITLE,
     marginTop: 20,
     marginBottom: 10,
@@ -853,7 +843,7 @@ const styles = StyleSheet.create({
   },
   friendDol: { fontSize: 22 },
   friendMid: { flex: 1, marginLeft: 12 },
-  friendNick: { fontSize: 16, fontWeight: "700", color: TITLE },
+  friendNick: { fontSize: 16, color: TITLE },
   friendStatus: { fontSize: 13, color: "#666666", marginTop: 4 },
   cheerBtn: {
     paddingHorizontal: 12,
@@ -862,13 +852,12 @@ const styles = StyleSheet.create({
   },
   cheerBtnActive: { backgroundColor: MAIN },
   cheerBtnDone: { backgroundColor: "#DDDDDD" },
-  cheerBtnText: { fontSize: 13, fontWeight: "700", color: "#FFFFFF" },
+  cheerBtnText: { fontSize: 13, color: "#FFFFFF" },
   cheerBtnTextDone: { color: "#666666" },
   groupScroll: { flex: 1 },
   groupScrollContent: { paddingBottom: 24 },
   groupTitle: {
     fontSize: 16,
-    fontWeight: "700",
     color: TITLE,
     paddingHorizontal: 16,
     paddingTop: 12,
@@ -895,7 +884,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 6,
   },
-  notifBadgeText: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },
+  notifBadgeText: { color: "#FFFFFF", fontSize: 12 },
   oceanAvatar: {
     position: "absolute",
     alignItems: "center",
@@ -919,7 +908,6 @@ const styles = StyleSheet.create({
   },
   groupListTitle: {
     fontSize: 15,
-    fontWeight: "700",
     marginTop: 16,
     marginBottom: 8,
     paddingHorizontal: 16,
@@ -939,7 +927,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 10,
     fontSize: 15,
-    fontWeight: "600",
     color: TITLE,
   },
   groupListEmoji: { fontSize: 18 },
@@ -995,7 +982,6 @@ const styles = StyleSheet.create({
   profileDolphin: { fontSize: 40 },
   profileName: {
     fontSize: 24,
-    fontWeight: "700",
     color: TITLE,
     textAlign: "center",
     marginTop: 16,
@@ -1016,13 +1002,11 @@ const styles = StyleSheet.create({
   statCell: { flex: 1, alignItems: "center" },
   statNum: {
     fontSize: 22,
-    fontWeight: "700",
     color: MAIN,
   },
   statLabel: { fontSize: 12, color: "#888888", marginTop: 4 },
   badgeSectionTitle: {
     fontSize: 14,
-    fontWeight: "700",
     color: TITLE,
     marginTop: 20,
     marginLeft: 16,
@@ -1070,7 +1054,6 @@ const styles = StyleSheet.create({
   },
   profileCheerText: {
     fontSize: 16,
-    fontWeight: "700",
     color: TITLE,
   },
   profileCheerTextOff: {

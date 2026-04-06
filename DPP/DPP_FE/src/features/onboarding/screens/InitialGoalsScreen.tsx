@@ -1,14 +1,7 @@
 // 초기 목표 패턴 선택
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import type {
   NativeStackNavigationProp,
   NativeStackScreenProps,
@@ -128,7 +121,7 @@ export function InitialGoalsScreen({ navigation, route }: Props) {
       headerRight={
         !isEdit ? (
           <Pressable onPress={onSkip} hitSlop={8} accessibilityRole="button">
-            <Text style={styles.skipText}>건너뛰기</Text>
+            <AppText style={styles.skipText}>건너뛰기</AppText>
           </Pressable>
         ) : undefined
       }
@@ -147,9 +140,9 @@ export function InitialGoalsScreen({ navigation, route }: Props) {
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.primaryBtnText}>
+            <AppText style={styles.primaryBtnText}>
               {isEdit ? "저장하기" : "다음으로"}
-            </Text>
+            </AppText>
           )}
         </Pressable>
       }
@@ -172,9 +165,9 @@ export function InitialGoalsScreen({ navigation, route }: Props) {
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}
             >
-              <Text style={[styles.rowText, on && styles.rowTextOn]}>
+              <AppText style={[styles.rowText, on && styles.rowTextOn]}>
                 {opt.label}
-              </Text>
+              </AppText>
             </Pressable>
           );
         })}
@@ -213,7 +206,6 @@ const styles = StyleSheet.create({
   },
   rowTextOn: {
     color: "#111111",
-    fontWeight: "600",
   },
   primaryBtn: {
     backgroundColor: MAIN,
@@ -230,11 +222,9 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: "700",
   },
   skipText: {
     color: SKIP,
     fontSize: 14,
-    fontWeight: "600",
   },
 });

@@ -1,14 +1,7 @@
 // 사용 기록 권한 안내
+import { AppText } from "../../../components/AppText";
 import React, { useCallback } from "react";
-import {
-  Alert,
-  NativeModules,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, NativeModules, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { OnboardingStackParamList } from "../../../navigation/types";
@@ -63,31 +56,31 @@ export function PermissionScreen({ navigation }: Props) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.shieldIcon} accessibilityLabel="방패 아이콘">
+        <AppText style={styles.shieldIcon} accessibilityLabel="방패 아이콘">
           🛡️
-        </Text>
-        <Text style={styles.title}>함께 관찰하기 위해{"\n"}권한이 필요해요</Text>
-        <Text style={styles.subtitle}>
+        </AppText>
+        <AppText style={styles.title}>함께 관찰하기 위해{"\n"}권한이 필요해요</AppText>
+        <AppText style={styles.subtitle}>
           당신의 디지털 습관을 이해하기 위한 첫 걸음
-        </Text>
+        </AppText>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>기기 사용 기록 접근</Text>
-          <Text style={styles.cardDesc}>
+          <AppText style={styles.cardTitle}>기기 사용 기록 접근</AppText>
+          <AppText style={styles.cardDesc}>
             어떤 앱을 얼마나, 얼마나 사용하는지 패턴을 함께 관찰합니다.
-          </Text>
+          </AppText>
           {BULLETS.map((line) => (
             <View key={line} style={styles.bulletRow}>
-              <Text style={styles.bulletDot}>•</Text>
-              <Text style={styles.bulletText}>{line}</Text>
+              <AppText style={styles.bulletDot}>•</AppText>
+              <AppText style={styles.bulletText}>{line}</AppText>
             </View>
           ))}
         </View>
 
-        <Text style={styles.hint}>🔒 데이터는 암호화하여 안전하게 보호됩니다</Text>
-        <Text style={styles.hint}>
+        <AppText style={styles.hint}>🔒 데이터는 암호화하여 안전하게 보호됩니다</AppText>
+        <AppText style={styles.hint}>
           👁 실제 앱 사용 내용은 보지 않아요
-        </Text>
+        </AppText>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -96,7 +89,7 @@ export function PermissionScreen({ navigation }: Props) {
           accessibilityRole="button"
           accessibilityLabel="자세히 보기"
         >
-          <Text style={styles.linkText}>자세히 보기</Text>
+          <AppText style={styles.linkText}>자세히 보기</AppText>
         </Pressable>
         <Pressable
           style={({ pressed }) => [
@@ -107,7 +100,7 @@ export function PermissionScreen({ navigation }: Props) {
           accessibilityRole="button"
           accessibilityLabel="간편 허용하기"
         >
-          <Text style={styles.primaryBtnText}>간편 허용하기</Text>
+          <AppText style={styles.primaryBtnText}>간편 허용하기</AppText>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -133,7 +126,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: "700",
     color: "#111111",
     textAlign: "center",
     marginBottom: 10,
@@ -156,7 +148,6 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 17,
-    fontWeight: "700",
     color: "#111111",
     marginBottom: 8,
   },
@@ -201,7 +192,6 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 15,
     color: MAIN,
-    fontWeight: "600",
     textAlign: "center",
     textDecorationLine: "underline",
   },
@@ -217,6 +207,5 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: "700",
   },
 });

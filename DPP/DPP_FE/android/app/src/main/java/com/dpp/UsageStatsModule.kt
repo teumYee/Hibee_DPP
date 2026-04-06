@@ -2,6 +2,7 @@ package com.dolphinpod
 
 import android.app.AppOpsManager
 import android.app.usage.UsageEvents
+import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
@@ -29,6 +30,9 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactCtx) {
 
     override fun getName(): String = "UsageStatsModule"
+
+    /** 짧은 BG→FG(권한창·PiP·멀티윈도우 등)마다 방문으로 잡히는 것 완화 */
+    private val launchCountMinGapMs = 25_000L
 
     @ReactMethod
     fun checkPermission(promise: Promise) {
@@ -227,9 +231,18 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
                     val usage = packageUsageMap.getOrPut(packageName) {
                         PackageUsage(packageName, 0L, event.timeStamp, event.timeStamp)
                     }
-                    usage.foregroundStartTime = event.timeStamp
-                    // 포그라운드로 올 때마다 카운트 업
-                    usage.launchCount++
+                    // 백그라운드에서 들어올 때 포그라운드 구간 시작. 방문 횟수는 일정 간격 이내 재진입은 1회로 묶음
+                    val wasInBackground = usage.foregroundStartTime <= 0L
+                    if (wasInBackground) {
+                        val gapOk =
+                            usage.lastVisitCountAtMs == 0L ||
+                                event.timeStamp - usage.lastVisitCountAtMs >= launchCountMinGapMs
+                        if (gapOk) {
+                            usage.launchCount++
+                            usage.lastVisitCountAtMs = event.timeStamp
+                        }
+                        usage.foregroundStartTime = event.timeStamp
+                    }
                     if (usage.firstTimeStamp == 0L || event.timeStamp < usage.firstTimeStamp) {
                         usage.firstTimeStamp = event.timeStamp
                     }
@@ -264,7 +277,40 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
                 usage.lastTimeStamp = now
             }
         }
-        
+
+        // queryEvents 는 OS가 보관하는 이벤트 개수에 한계가 있어, 하루가 길면 이른 사용 기록이 잘려
+        // 수 분만 집계되는 현상이 난다. 총 foreground 시간은 queryUsageStats 집계로 덮어쓴다.
+        val statsList: List<UsageStats> =
+            usm.queryUsageStats(UsageStatsManager.INTERVAL_BEST, startOfDay, now) ?: emptyList()
+        for (s in statsList) {
+            val pkg = s.packageName ?: continue
+            val fg = s.totalTimeInForeground
+            if (fg <= 0L) continue
+            if (!shouldInclude(pkg, fg)) continue
+
+            val existing = packageUsageMap[pkg]
+            if (existing != null) {
+                existing.totalTime = fg
+            } else {
+                val lastUsed = s.lastTimeUsed
+                val (approxFirst, lastTs) =
+                    if (lastUsed > 0L) {
+                        val a = (lastUsed - fg).coerceAtLeast(startOfDay)
+                        a to lastUsed.coerceAtLeast(a)
+                    } else {
+                        startOfDay to now
+                    }
+                packageUsageMap[pkg] = PackageUsage(
+                    packageName = pkg,
+                    totalTime = fg,
+                    firstTimeStamp = approxFirst,
+                    lastTimeStamp = lastTs,
+                    launchCount = 0,
+                    maxContinuousTime = 0L,
+                )
+            }
+        }
+
         val result: WritableArray = Arguments.createArray()
         packageUsageMap.values.forEach { usage ->
             if (usage.totalTime > 0L) {
@@ -308,6 +354,20 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
         promise.resolve(count)
     }
 
+    /** 패키지명으로 런처 아이콘 PNG base64 (대시보드 등) */
+    @ReactMethod
+    fun getAppIconBase64(packageName: String, promise: Promise) {
+        try {
+            val pm = reactCtx.packageManager
+            val ai = pm.getApplicationInfo(packageName, 0)
+            val drawable = ai.loadIcon(pm)
+            val b64 = drawableToBase64Png(drawable, 96)
+            promise.resolve(b64)
+        } catch (_: Exception) {
+            promise.resolve(null)
+        }
+    }
+
     /**
      * 언락 횟수 리셋
      */
@@ -325,18 +385,28 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
         var foregroundStartTime: Long = -1L,
         // 방문 횟수
         var launchCount: Int = 0,
+        /** launchCount 를 마지막으로 올린 이벤트 시각(ms) — 디바운스용 */
+        var lastVisitCountAtMs: Long = 0L,
         // 최장 연속 사용
         var maxContinuousTime: Long = 0L
     )
 
     private fun shouldInclude(packageName: String?, totalTimeInForegroundMs: Long): Boolean {
         if (packageName.isNullOrBlank()) return false
+        val selfPkg = reactCtx.packageName
+        // 우리 앱 본 패키지 + com.dolphinpod:provider 같은 서브프로세스는 블랙리스트에 절대 걸리지 않게
+        if (packageName == selfPkg || packageName.startsWith("$selfPkg:")) {
+            return totalTimeInForegroundMs > 0L
+        }
         if (totalTimeInForegroundMs <= 0L) return false
         if (packageName == "com.android.settings" || packageName == "com.android.vending") return true
 
         val lower = packageName.lowercase()
-        val blacklist = listOf("systemui", "launcher", "keyboard", "bluetooth", "provider")
-        return !blacklist.any { lower.contains(it) }
+        // "provider" 단독 매칭은 com.dolphinpod:provider 오탐 → 시스템 content provider 패턴만 제외
+        val blacklist = listOf("systemui", "launcher", "keyboard", "bluetooth")
+        if (blacklist.any { lower.contains(it) }) return false
+        if (lower.contains(".providers.")) return false
+        return true
     }
 
     private fun hasUsageAccessPermission(ctx: Context): Boolean {

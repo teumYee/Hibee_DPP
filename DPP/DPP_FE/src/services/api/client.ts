@@ -2,7 +2,7 @@
 import { useAuthStore } from "../../store/auth.store";
 
 /** 나중에 react-native-config 등으로 치환 */
-const BASE_URL = "http://10.240.72.189:8000";
+const BASE_URL = "http://10.240.199.208:8000";
 
 export class HttpError extends Error {
   constructor(
@@ -46,6 +46,10 @@ async function request<T>(
 ): Promise<T> {
   const url = withQuery(path, options?.query);
   const token = useAuthStore.getState().token;
+  const authHeader =
+    typeof token === "string" && token.trim().length > 0
+      ? `Bearer ${token.trim()}`
+      : null;
 
   const headers: Record<string, string> = {
     Accept: "application/json",
@@ -55,8 +59,9 @@ async function request<T>(
     headers["Content-Type"] = "application/json";
   }
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  /** postUsageLogs·get·post 등 전부 이 경로 — domain API에서 헤더 중복 불필요 */
+  if (authHeader != null) {
+    headers.Authorization = authHeader;
   }
 
   const response = await fetch(url, {

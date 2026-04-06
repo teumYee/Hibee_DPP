@@ -1,6 +1,7 @@
 // 초기 설정 6단계 공통 — 진행 바 + 뒤로가기
+import { AppText } from "../../../components/AppText";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const MAIN = "#2E7FC1";
@@ -39,17 +40,17 @@ export function OnboardingStepLayout({
           accessibilityRole="button"
           accessibilityLabel="뒤로"
         >
-          <Text style={styles.backText}>←</Text>
+          <AppText style={styles.backText}>←</AppText>
         </Pressable>
         {hideProgress ? (
           <View style={styles.headerSpacer} />
         ) : (
-          <Text
+          <AppText
             style={styles.progressLabel}
             accessibilityLabel={`${step}단계 중 ${totalSteps}단계`}
           >
             {step} / {totalSteps}
-          </Text>
+          </AppText>
         )}
         <View style={styles.headerRightWrap}>
           {headerRight ?? <View style={styles.headerSpacer} />}
@@ -66,8 +67,8 @@ export function OnboardingStepLayout({
         </View>
       )}
 
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
+      <AppText style={styles.title}>{title}</AppText>
+      <AppText style={styles.subtitle}>{subtitle}</AppText>
 
       <View style={styles.body}>{children}</View>
 
@@ -95,7 +96,6 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 14,
-    fontWeight: "600",
     color: MAIN,
   },
   headerSpacer: {
@@ -120,7 +120,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: "700",
     color: "#111111",
     paddingHorizontal: 24,
     marginBottom: 8,

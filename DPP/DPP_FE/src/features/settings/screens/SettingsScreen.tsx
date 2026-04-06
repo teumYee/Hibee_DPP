@@ -1,14 +1,7 @@
 // 설정 — TODO: 개인정보 처리방침 URL·푸시 카피·이메일 필드 백엔드 연동
+import { AppText } from "../../../components/AppText";
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Alert,
-  Linking,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   CommonActions,
@@ -39,15 +32,22 @@ function resetRootToOnboarding(navigation: NavigationProp<ParamListBase>): void 
 export function SettingsScreen({ navigation }: Props) {
   const logout = useAuthStore((s) => s.logout);
   const [nickname, setNickname] = useState<string>("");
+  const [streakDays, setStreakDays] = useState<number>(0);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         const s = await getUserSummary();
-        if (alive) setNickname(s.nickname);
+        if (alive) {
+          setNickname(s.nickname);
+          setStreakDays(s.streak_days);
+        }
       } catch {
-        // TODO: GET usersMeSummary 실패 시 재시도·오프라인 문구
+        if (alive) {
+          setNickname("");
+          setStreakDays(0);
+        }
       }
     })();
     return () => {
@@ -114,9 +114,9 @@ export function SettingsScreen({ navigation }: Props) {
           accessibilityRole="button"
           accessibilityLabel="뒤로"
         >
-          <Text style={styles.back}>←</Text>
+          <AppText style={styles.back}>←</AppText>
         </Pressable>
-        <Text style={styles.topTitle}>설정</Text>
+        <AppText style={styles.topTitle}>설정</AppText>
         <View style={styles.topSpacer} />
       </View>
 
@@ -124,7 +124,7 @@ export function SettingsScreen({ navigation }: Props) {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.sectionHeader}>초기 설정</Text>
+        <AppText style={styles.sectionHeader}>초기 설정</AppText>
         <View style={styles.card}>
           <SettingsRow
             title="주요 목표 다시 설정하기"
@@ -145,7 +145,7 @@ export function SettingsScreen({ navigation }: Props) {
           />
         </View>
 
-        <Text style={styles.sectionHeader}>개인정보</Text>
+        <AppText style={styles.sectionHeader}>개인정보</AppText>
         <View style={styles.card}>
           <Pressable
             style={styles.rowMulti}
@@ -153,18 +153,18 @@ export function SettingsScreen({ navigation }: Props) {
             accessibilityRole="button"
           >
             <View style={styles.rowMultiText}>
-              <Text style={styles.rowTitle}>푸시 알림 설정</Text>
-              <Text style={styles.rowHint}>
+              <AppText style={styles.rowTitle}>푸시 알림 설정</AppText>
+              <AppText style={styles.rowHint}>
                 앱 이용에 따른 시간 알림 제공해요
-              </Text>
-              <Text style={styles.rowHint}>
+              </AppText>
+              <AppText style={styles.rowHint}>
                 알림 내용은 마케팅 목적으로 사용되지 않아요
-              </Text>
-              <Text style={styles.rowHint}>
+              </AppText>
+              <AppText style={styles.rowHint}>
                 앱이 제공하는 알림 내용은 기기에 저장되어 있어요
-              </Text>
+              </AppText>
             </View>
-            <Text style={styles.chevron}>›</Text>
+            <AppText style={styles.chevron}>›</AppText>
           </Pressable>
           <View style={styles.divider} />
           <SettingsRow
@@ -174,18 +174,17 @@ export function SettingsScreen({ navigation }: Props) {
           />
         </View>
 
-        <Text style={styles.sectionHeader}>계정</Text>
+        <AppText style={styles.sectionHeader}>계정</AppText>
         <View style={styles.card}>
           <View style={styles.accountRow}>
             <View style={styles.avatar} />
             <View style={styles.accountTextCol}>
-              <Text style={styles.nickname}>
+              <AppText style={styles.nickname}>
                 {nickname.length > 0 ? nickname : "닉네임"}
-              </Text>
-              <Text style={styles.emailMuted}>
-                {/* TODO: usersMeSummary에 이메일 필드 추가 시 표시 */}
-                이메일 준비 중
-              </Text>
+              </AppText>
+              <AppText style={styles.emailMuted}>
+                연속 체크인 {streakDays}일
+              </AppText>
             </View>
           </View>
           <View style={styles.divider} />
@@ -194,11 +193,11 @@ export function SettingsScreen({ navigation }: Props) {
             onPress={onLogout}
             accessibilityRole="button"
           >
-            <Text style={styles.rowTitle}>로그아웃</Text>
+            <AppText style={styles.rowTitle}>로그아웃</AppText>
           </Pressable>
         </View>
 
-        <Text style={styles.sectionHeader}>어떤</Text>
+        <AppText style={styles.sectionHeader}>어떤</AppText>
         <View style={styles.card}>
           <Pressable
             style={styles.rowMulti}
@@ -206,16 +205,16 @@ export function SettingsScreen({ navigation }: Props) {
             accessibilityRole="button"
           >
             <View style={styles.rowMultiText}>
-              <Text style={styles.rowTitle}>지금까지의 여정을 한눈에 보기</Text>
-              <Text style={styles.rowSub}>
+              <AppText style={styles.rowTitle}>지금까지의 여정을 한눈에 보기</AppText>
+              <AppText style={styles.rowSub}>
                 내가 해엄쳐온 바다의 흔적들
-              </Text>
+              </AppText>
             </View>
-            <Text style={styles.chevron}>›</Text>
+            <AppText style={styles.chevron}>›</AppText>
           </Pressable>
         </View>
 
-        <Text style={styles.sectionHeader}>순서대로</Text>
+        <AppText style={styles.sectionHeader}>순서대로</AppText>
         <View style={styles.card}>
           <Pressable
             style={styles.rowMulti}
@@ -223,12 +222,12 @@ export function SettingsScreen({ navigation }: Props) {
             accessibilityRole="button"
           >
             <View style={styles.rowMultiText}>
-              <Text style={[styles.rowTitle, styles.dangerText]}>
+              <AppText style={[styles.rowTitle, styles.dangerText]}>
                 앱 데이터 초기화
-              </Text>
-              <Text style={styles.rowSub}>
+              </AppText>
+              <AppText style={styles.rowSub}>
                 처음부터 다시 시작할 수 있어요
-              </Text>
+              </AppText>
             </View>
           </Pressable>
         </View>
@@ -250,8 +249,8 @@ function SettingsRow(props: {
       accessibilityRole="button"
       accessibilityLabel={title}
     >
-      <Text style={styles.rowTitle}>{title}</Text>
-      <Text style={styles.chevron}>›</Text>
+      <AppText style={styles.rowTitle}>{title}</AppText>
+      <AppText style={styles.chevron}>›</AppText>
     </Pressable>
   );
 }
@@ -277,7 +276,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     fontSize: 17,
-    fontWeight: "700",
+
     color: "#111111",
   },
   topSpacer: {
@@ -289,7 +288,7 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     fontSize: 13,
-    fontWeight: "600",
+
     color: "#888888",
     marginTop: 20,
     marginBottom: 8,
@@ -315,14 +314,14 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 16,
     color: "#111111",
-    fontWeight: "500",
+
     flex: 1,
     paddingRight: 8,
   },
   chevron: {
     fontSize: 22,
     color: "#BBBBBB",
-    fontWeight: "300",
+
   },
   rowMulti: {
     flexDirection: "row",
@@ -372,7 +371,7 @@ const styles = StyleSheet.create({
   },
   nickname: {
     fontSize: 16,
-    fontWeight: "600",
+
     color: "#111111",
   },
   emailMuted: {
@@ -382,6 +381,6 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     color: "#D32F2F",
-    fontWeight: "600",
+
   },
 });

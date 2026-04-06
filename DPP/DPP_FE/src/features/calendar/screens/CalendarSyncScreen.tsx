@@ -1,1 +1,0 @@
-// Calendar sync screen component

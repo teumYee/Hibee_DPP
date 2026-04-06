@@ -1,5 +1,5 @@
 // 대시보드 — 사용 로그 전송, 오늘 지표, AI 일일 요약, 설치 앱 분류
-import { get, post, put } from "./client";
+import { get, post, put, HttpError } from "./client";
 import { ENDPOINTS } from "./endpoints";
 
 export type UsageLogItem = {
@@ -69,10 +69,44 @@ export type GetDashboardDailySummaryResponse = {
   summary: string;
 };
 
+/**
+ * POST /api/v1/logs
+ * `post()` → `client.request()`가 `useAuthStore.getState().token`이 있으면
+ * `Authorization: Bearer {token}` 헤더를 자동으로 붙입니다.
+ */
 export async function postUsageLogs(
   body: PostUsageLogsRequest,
 ): Promise<void> {
   await post<void>(ENDPOINTS.usageLogs, body);
+}
+
+/** GET /api/v1/logs/{user_id} — DB에 쌓인 앱 사용 로그 (대시보드 동기화 POST 결과) */
+export type UsageLogRow = {
+  id: number;
+  user_id: number;
+  package_name: string;
+  app_name: string;
+  usage_duration: number;
+  date: string;
+  first_time_stamp: number;
+  last_time_stamp: number;
+  unlock_count: number;
+  app_launch_count: number;
+  max_continuous_duration: number;
+  is_night_mode: boolean;
+  category_id?: number;
+  category_name?: string;
+};
+
+export async function getUsageLogsByUserId(
+  userId: number,
+): Promise<UsageLogRow[]> {
+  try {
+    return await get<UsageLogRow[]>(`${ENDPOINTS.usageLogsByUser}/${userId}`);
+  } catch (e) {
+    if (e instanceof HttpError && e.status === 404) return [];
+    throw e;
+  }
 }
 
 export async function getDashboardToday(): Promise<DashboardToday> {

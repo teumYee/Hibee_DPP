@@ -1,14 +1,8 @@
 // 닉네임 설정
+import { AppText } from "../../../components/AppText";
+import { AppTextInput } from "../../../components/AppTextInput";
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { OnboardingStackParamList } from "../../../navigation/types";
@@ -75,16 +69,16 @@ export function NicknameScreen({ navigation }: Props) {
       >
         <View style={styles.skipRow}>
           <Pressable onPress={onSkip} hitSlop={8} accessibilityRole="button">
-            <Text style={styles.skipText}>건너뛰기</Text>
+            <AppText style={styles.skipText}>건너뛰기</AppText>
           </Pressable>
         </View>
-        <Text style={styles.title}>바다에서 부를{"\n"}이름을 정해볼까요?</Text>
-        <Text style={styles.subtitle}>
+        <AppText style={styles.title}>바다에서 부를{"\n"}이름을 정해볼까요?</AppText>
+        <AppText style={styles.subtitle}>
           Pod 친구들과 함께할 나의 이름이에요
-        </Text>
+        </AppText>
 
         <View style={styles.inputRow}>
-          <TextInput
+          <AppTextInput
             style={styles.input}
             value={value}
             onChangeText={(t) => setValue(t.slice(0, MAX_LEN))}
@@ -95,12 +89,12 @@ export function NicknameScreen({ navigation }: Props) {
             autoCapitalize="none"
             accessibilityLabel="닉네임 입력"
           />
-          <Text style={styles.counter} accessibilityLabel={`${len}자 입력됨`}>
+          <AppText style={styles.counter} accessibilityLabel={`${len}자 입력됨`}>
             {len}/{MAX_LEN}
-          </Text>
+          </AppText>
         </View>
 
-        <Text style={styles.chipsLabel}>추천 닉네임</Text>
+        <AppText style={styles.chipsLabel}>추천 닉네임</AppText>
         <View style={styles.chips}>
           {SUGGESTIONS.map((nick) => (
             <Pressable
@@ -113,12 +107,12 @@ export function NicknameScreen({ navigation }: Props) {
               accessibilityRole="button"
               accessibilityLabel={`${nick} 선택`}
             >
-              <Text style={styles.chipText}>{nick}</Text>
+              <AppText style={styles.chipText}>{nick}</AppText>
             </Pressable>
           ))}
         </View>
 
-        <Text style={styles.hint}>닉네임은 나중에 언제든 바꿀 수 있어요</Text>
+        <AppText style={styles.hint}>닉네임은 나중에 언제든 바꿀 수 있어요</AppText>
       </ScrollView>
 
       <View style={styles.footer}>
@@ -136,7 +130,7 @@ export function NicknameScreen({ navigation }: Props) {
           {submitting ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.primaryBtnText}>다음으로</Text>
+            <AppText style={styles.primaryBtnText}>다음으로</AppText>
           )}
         </Pressable>
       </View>
@@ -164,11 +158,9 @@ const styles = StyleSheet.create({
   skipText: {
     color: "#6C7A89",
     fontSize: 14,
-    fontWeight: "600",
   },
   title: {
     fontSize: 26,
-    fontWeight: "700",
     color: "#111111",
     marginTop: 8,
     marginBottom: 10,
@@ -203,7 +195,6 @@ const styles = StyleSheet.create({
   },
   chipsLabel: {
     fontSize: 14,
-    fontWeight: "600",
     color: "#333333",
     marginBottom: 10,
   },
@@ -227,7 +218,6 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 14,
     color: MAIN,
-    fontWeight: "600",
   },
   hint: {
     fontSize: 13,
@@ -257,6 +247,5 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     color: "#FFFFFF",
     fontSize: 17,
-    fontWeight: "700",
   },
 });

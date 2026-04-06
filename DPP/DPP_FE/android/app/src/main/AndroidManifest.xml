@@ -44,8 +44,8 @@
             android:name=".UnlockReceiver"
             android:enabled="true"
             android:exported="true">
+            <!-- USER_PRESENT: Oreo+ 에서 매니페스트 암시적 브로드캐스트 제한으로 거의 미전달 → MainApplication 에서 동적 등록 -->
             <intent-filter>
-                <action android:name="android.intent.action.USER_PRESENT" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>

@@ -1,13 +1,6 @@
+import { AppText } from "../components/AppText";
 import React, {useCallback, useEffect, useMemo, useState,} from 'react';
-import {
-  Alert,
-  NativeModules,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Alert, NativeModules, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 
 type UsageRow = {
   packageName: string;
@@ -175,36 +168,36 @@ export default function UsageStatsTestScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>UsageStats 테스트</Text>
+      <AppText style={styles.title}>UsageStats 테스트</AppText>
 
       <View style={styles.unlockCard}>
-      <Text style={styles.label}>오늘의 총 언락 횟수</Text>
-      <Text style={styles.unlockValue}>{unlockCount}회</Text>
+      <AppText style={styles.label}>오늘의 총 언락 횟수</AppText>
+      <AppText style={styles.unlockValue}>{unlockCount}회</AppText>
     </View>
 
       {!moduleAvailable && (
-        <Text style={styles.error}>
+        <AppText style={styles.error}>
           UsageStatsModule이 없습니다. (패키지 등록/빌드 필요)
-        </Text>
+        </AppText>
       )}
 
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && <AppText style={styles.error}>{error}</AppText>}
 
       <View style={styles.row}>
-        <Text style={styles.label}>권한:</Text>
-        <Text style={styles.value}>
+        <AppText style={styles.label}>권한:</AppText>
+        <AppText style={styles.value}>
           {hasPermission === null ? '확인 중...' : hasPermission ? '허용' : '거부'}
-        </Text>
+        </AppText>
       </View>
 
       {!hasPermission && (
         <TouchableOpacity style={styles.button} onPress={onOpenSettings}>
-          <Text style={styles.buttonText}>설정으로 이동</Text>
+          <AppText style={styles.buttonText}>설정으로 이동</AppText>
         </TouchableOpacity>
       )}
 
       <TouchableOpacity style={styles.buttonSecondary} onPress={onReload}>
-        <Text style={styles.buttonText}>새로고침</Text>
+        <AppText style={styles.buttonText}>새로고침</AppText>
       </TouchableOpacity>
 
       <ScrollView style={styles.list}>
@@ -213,19 +206,19 @@ export default function UsageStatsTestScreen() {
           return (
             <View key={r.packageName} style={styles.item}>
               <View style={styles.itemHeader}>
-                <Text style={styles.pkg}>{r.appName || r.packageName}</Text>
-                <Text style={styles.launchTag}>{r.appLaunchCount}회 방문</Text>
+                <AppText style={styles.pkg}>{r.appName || r.packageName}</AppText>
+                <AppText style={styles.launchTag}>{r.appLaunchCount}회 방문</AppText>
             </View>
-            <Text style={styles.time}>
+            <AppText style={styles.time}>
               총 {minutes.toFixed(1)}분 사용 (최장 {Math.round(r.maxContinuousTime / 60)}분 연속)
-             </Text>
+             </AppText>
            </View>
     );
   })}
         {hasPermission && rows.length === 0 && (
-          <Text style={styles.muted}>
+          <AppText style={styles.muted}>
             데이터가 없습니다. (0초 앱은 필터링되어 제외됩니다)
-          </Text>
+          </AppText>
         )}
       </ScrollView>
     </View>
@@ -234,10 +227,10 @@ export default function UsageStatsTestScreen() {
 
 const styles = StyleSheet.create({
   container: {flex: 1, padding: 16, backgroundColor: '#0b0c10'},
-  title: {color: '#ffffff', fontSize: 18, fontWeight: '700', marginBottom: 12},
+  title: {color: '#ffffff', fontSize: 18, marginBottom: 12},
   row: {flexDirection: 'row', alignItems: 'center', marginBottom: 12},
   label: {color: '#9aa0a6', marginRight: 8},
-  value: {color: '#ffffff', fontWeight: '600'},
+  value: {color: '#ffffff'},
   button: {
     backgroundColor: '#4f46e5',
     paddingVertical: 12,
@@ -252,14 +245,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 12,
   },
-  buttonText: {color: '#ffffff', textAlign: 'center', fontWeight: '700'},
+  buttonText: {color: '#ffffff', textAlign: 'center'},
   list: {flex: 1},
   item: {
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#2b2f36',
   },
-  pkg: {color: '#ffffff', fontWeight: '600', marginBottom: 4},
+  pkg: {color: '#ffffff', marginBottom: 4},
   time: {color: '#9aa0a6'},
   muted: {color: '#9aa0a6', marginTop: 16},
   error: {color: '#f87171', marginBottom: 8},
@@ -276,7 +269,6 @@ const styles = StyleSheet.create({
   unlockValue: {
     color: '#4f46e5',
     fontSize: 32,
-    fontWeight: '800',
     marginTop: 4,
   },
   itemHeader: {
@@ -292,7 +284,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
     fontSize: 12,
-    fontWeight: 'bold',
   },
 });
 

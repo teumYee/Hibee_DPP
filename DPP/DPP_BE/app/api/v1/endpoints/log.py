@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Dict, List
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 from app.schemas.log import (
     AppUsageLogCreate,
@@ -69,8 +69,6 @@ def upload_logs(
         raise HTTPException(status_code=404, detail="User not found.")
     
     added_count = 0
-    # 이번 전송 묶음의 첫 번째 로그에만 unlock_count 정보가 담겨옴
-    first_log_flag = True
 
     for log_item in log_data.logs:
         # 1. 중복 검사: 패키지명과 시작 시간이 모두 같은 데이터가 이미 있는지 확인
@@ -109,7 +107,9 @@ def upload_logs(
 
             raw_id = getattr(log_item, 'category_id', -1)
             cat_name = get_category_name(raw_id)
-            
+
+            # 일일 언락은 log_data.unlock_count 한 값인데, 동기화마다 "첫 행"에 넣으면 행마다 33이 쌓여 SUM이 33→66→99로 불어남
+            # → 새 행에는 항상 per-item 만 저장, 일일 합은 아래에서 오늘 구간 대표 1행만 갱신
             new_log = UsageLog(
                 user_id=current_user_id,
                 package_name=log_item.package_name,
@@ -127,7 +127,34 @@ def upload_logs(
             )
             db.add(new_log)
             added_count += 1
-            first_log_flag = False # 이후 로그들은 0으로 기록
+
+    # 오늘(서버 기준 UsageLog.date) 로그 중 id가 가장 작은 행 하나에만 일일 언락 저장 — 동기화 N회여도 값은 덮어쓰기
+    today_start = datetime.combine(date.today(), datetime.min.time())
+    next_day_start = today_start + timedelta(days=1)
+    anchor = (
+        db.query(UsageLog)
+        .filter(
+            UsageLog.user_id == current_user_id,
+            UsageLog.date >= today_start,
+            UsageLog.date < next_day_start,
+        )
+        .order_by(UsageLog.id.asc())
+        .first()
+    )
+    if anchor is not None:
+        anchor.unlock_count = log_data.unlock_count
+        others = (
+            db.query(UsageLog)
+            .filter(
+                UsageLog.user_id == current_user_id,
+                UsageLog.date >= today_start,
+                UsageLog.date < next_day_start,
+                UsageLog.id != anchor.id,
+            )
+            .all()
+        )
+        for row in others:
+            row.unlock_count = 0
 
     db.commit()
     return {"message": f"기록 저장 성공"}
