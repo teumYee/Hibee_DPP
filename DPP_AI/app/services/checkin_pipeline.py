@@ -91,6 +91,8 @@ def run_checkin_pipeline(
     """
     run_id = run_id or str(uuid.uuid4())
     snapshot = input_data.get("snapshot", input_data) if isinstance(input_data, dict) else {}
+    behavior_breakdown = input_data.get("behavior_breakdown", {}) if isinstance(input_data, dict) else {}
+    time_policy = input_data.get("time_policy", {}) if isinstance(input_data, dict) else {}
     user_configs = input_data.get("user_configs", {}) if isinstance(input_data, dict) else {}
 
     writer_output: Optional[Dict[str, Any]] = None
@@ -107,6 +109,8 @@ def run_checkin_pipeline(
             writer_output = generate_pattern_candidates(
                 snapshot,
                 user_configs,
+                behavior_breakdown=behavior_breakdown,
+                time_policy=time_policy,
                 rewrite_instructions=rewrite_instructions,
             )
             if log_to_db:

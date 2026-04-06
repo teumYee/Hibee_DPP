@@ -12,6 +12,9 @@ class OnboardingRequest(BaseModel):
     active_times: list[str] = Field(default_factory=list)
     night_mode_start: str
     night_mode_end: str
+    checkin_time: str = "21:00"
+    checkin_window_minutes: int = 120
+    day_rollover_time: str = "04:00"
     struggles: list[str] = Field(default_factory=list)
     focus_categories: list[str] = Field(default_factory=list)
 

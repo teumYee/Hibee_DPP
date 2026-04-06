@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Dict, List
-from datetime import datetime, date, timedelta
+from typing import Any, Dict, List
+from datetime import datetime, date, timedelta, timezone
 
 from app.schemas.log import (
     AppUsageLogCreate,
@@ -13,8 +13,14 @@ from app.schemas.log import (
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.usage_log import UsageLog, Daily_SnapShots
-from app.models.user import Users
+from app.models.user import User_Configs, Users
 from app.utils.category import get_category_name
+from app.utils.checkin_policy import (
+    CANONICAL_PACKAGE_NAME,
+    current_logical_date,
+    policy_from_config,
+    resolve_logical_date,
+)
 
 router = APIRouter()
 
@@ -54,6 +60,16 @@ def _normalize_time_of_day_buckets(raw_buckets: Dict[str, int]) -> Dict[str, int
             continue
 
     return normalized
+
+
+def _as_list_of_dicts(items: Any) -> List[Dict[str, Any]]:
+    if not isinstance(items, list):
+        return []
+    return [item for item in items if isinstance(item, dict)]
+
+
+def _as_dict(value: Any) -> Dict[str, Any]:
+    return value if isinstance(value, dict) else {}
 
 @router.post("", response_model=dict)
 def upload_logs(
@@ -166,15 +182,24 @@ def create_daily_snapshot_v3(
     current_user: Users = Depends(get_current_user),
 ):
     current_user_id = current_user.id
-    normalized_package_name = payload.package_name or "__all__"
+    user_config = db.query(User_Configs).filter(User_Configs.user_id == current_user_id).first()
+    normalized_package_name = payload.package_name or CANONICAL_PACKAGE_NAME
     normalized_buckets = _normalize_time_of_day_buckets(payload.time_of_day_buckets_sec)
     bucket_total_sec = sum(normalized_buckets.values())
+    policy = policy_from_config(user_config, timezone_name=payload.timezone)
+    captured_at = payload.captured_at or datetime.now(timezone.utc)
+    logical_date = resolve_logical_date(
+        captured_at,
+        day_rollover_time=policy.day_rollover_time,
+        timezone_name=policy.timezone,
+    )
+    target_date = logical_date if normalized_package_name == CANONICAL_PACKAGE_NAME else payload.date
 
     # 1. 같은 날짜, 같은 유저, 같은 패키지의 기존 스냅샷 조회
     existing_snapshot = db.query(Daily_SnapShots).filter(
         Daily_SnapShots.user_id == current_user_id,
         Daily_SnapShots.package_name == normalized_package_name,
-        Daily_SnapShots.snapshot_date == payload.date,
+        Daily_SnapShots.snapshot_date == target_date,
     ).first()
 
     if existing_snapshot:
@@ -185,9 +210,13 @@ def create_daily_snapshot_v3(
         existing_snapshot.time_of_day_buckets_json = normalized_buckets
         existing_snapshot.max_continuous_sec = payload.max_continuous_sec
         existing_snapshot.app_launch_count = payload.app_launch_count
-        existing_snapshot.snapshot_date = payload.date
-        existing_snapshot.timezone = payload.timezone
+        existing_snapshot.snapshot_date = target_date
+        existing_snapshot.timezone = policy.timezone
         existing_snapshot.package_name = normalized_package_name
+        existing_snapshot.per_app_usage_json = _as_list_of_dicts(payload.per_app_usage_json)
+        existing_snapshot.per_category_usage_json = _as_list_of_dicts(payload.per_category_usage_json)
+        existing_snapshot.timeline_buckets_json = _as_dict(payload.timeline_buckets_json)
+        existing_snapshot.top_apps_json = _as_list_of_dicts(payload.top_apps_json)
         existing_snapshot.schema_version = payload.schema_version
         existing_snapshot.source_hash = payload.source_hash
         db.commit()
@@ -198,8 +227,8 @@ def create_daily_snapshot_v3(
         # 3. 없으면 새로 생성
         snapshot = Daily_SnapShots(
             user_id=current_user_id,
-            snapshot_date=payload.date,
-            timezone=payload.timezone,
+            snapshot_date=target_date,
+            timezone=policy.timezone,
             package_name=normalized_package_name,
             total_usage_check=payload.total_usage_check,
             unlock_count=payload.unlock_count,
@@ -207,6 +236,10 @@ def create_daily_snapshot_v3(
             time_of_day_buckets_json=normalized_buckets,
             max_continuous_sec=payload.max_continuous_sec,
             app_launch_count=payload.app_launch_count,
+            per_app_usage_json=_as_list_of_dicts(payload.per_app_usage_json),
+            per_category_usage_json=_as_list_of_dicts(payload.per_category_usage_json),
+            timeline_buckets_json=_as_dict(payload.timeline_buckets_json),
+            top_apps_json=_as_list_of_dicts(payload.top_apps_json),
             schema_version=payload.schema_version,
             source_hash=payload.source_hash,
         )
@@ -219,6 +252,10 @@ def create_daily_snapshot_v3(
         "snapshot_id": snapshot.id,
         "status": "success",
         "upserted": upserted,
+        "snapshot_date": snapshot.snapshot_date or current_logical_date(
+            user_config,
+            timezone_name=policy.timezone,
+        ),
     }
 # 로그 조회 API (날짜 조건 추가)
 # @router.get("/{user_id}", response_model=List[schemas.AppUsageLogResponse])

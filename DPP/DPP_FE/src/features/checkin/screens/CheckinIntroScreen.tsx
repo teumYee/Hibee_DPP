@@ -8,6 +8,7 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
 import { getCheckinPatterns } from "../../../services/api/checkin.api";
+import { prepareCheckinPatterns } from "../services/prepareCheckin";
 
 const BG = "#0D2E5C";
 const MOON = "#FFD700";
@@ -21,7 +22,12 @@ export function CheckinIntroScreen({ navigation }: Props) {
   const onStart = useCallback(async () => {
     setLoading(true);
     try {
+      // 테스트 모드: 기존 후보가 있어도 매번 다시 생성해본다.
+      await prepareCheckinPatterns();
       const res = await getCheckinPatterns();
+      if (res.patterns.length === 0) {
+        throw new Error("오늘 체크인 패턴을 아직 만들지 못했어요.");
+      }
       navigation.navigate("CheckinPattern", {
         patterns: res.patterns,
         currentIndex: 0,
@@ -34,6 +40,12 @@ export function CheckinIntroScreen({ navigation }: Props) {
       setLoading(false);
     }
   }, [navigation]);
+
+  const onPressStart = useCallback(() => {
+    onStart().catch(() => {
+      // onStart 내부에서 사용자 안내를 마친다.
+    });
+  }, [onStart]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -61,7 +73,7 @@ export function CheckinIntroScreen({ navigation }: Props) {
       <View style={styles.footer}>
         <Pressable
           style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]}
-          onPress={() => void onStart()}
+          onPress={onPressStart}
           disabled={loading}
           accessibilityRole="button"
           accessibilityLabel="시작하기"

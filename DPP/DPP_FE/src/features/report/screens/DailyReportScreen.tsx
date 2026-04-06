@@ -10,6 +10,7 @@ import Svg, {
 } from "react-native-svg";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
+import { getDailyReportByDate } from "../../../services/api/report.api";
 import type { DailyReportData } from "../types";
 import { APP_FONT_FAMILY } from "../../../theme/typography";
 
@@ -31,35 +32,6 @@ function formatKoreanLongDate(dateKey: string): string {
   const d = parseDateKey(dateKey);
   const dow = WEEKDAYS_KO[d.getDay()];
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${dow}요일`;
-}
-
-function buildMockDaily(dateKey: string): DailyReportData {
-  return {
-    date: dateKey,
-    ai_summary: "밤 시간 사용이 조금 길었던 날이에요",
-    time_buckets: [
-      { hour: 9, minutes: 20 },
-      { hour: 10, minutes: 35 },
-      { hour: 12, minutes: 15 },
-      { hour: 14, minutes: 40 },
-      { hour: 18, minutes: 25 },
-      { hour: 20, minutes: 55 },
-      { hour: 22, minutes: 70 },
-      { hour: 23, minutes: 45 },
-    ],
-    category_usage: [
-      { name: "소셜", minutes: 85, color: "#2E7FC1" },
-      { name: "동영상", minutes: 62, color: "#FF6B9D" },
-      { name: "생산성", minutes: 43, color: "#FFB347" },
-      { name: "게임", minutes: 28, color: "#98FB98" },
-    ],
-    kpt_items: [
-      { type: "keep", label: "저녁·늦은 밤에 몰린 날" },
-      { type: "problem", label: "잦은 확인함" },
-    ],
-    ai_comment:
-      "오늘은 소셜과 동영상 사이를 오가며 시간을 보내셨네요. 저녁 시간대에 집중이 높아졌다가, 밤이 되면서 자연스럽게 줄어드는 흐름이 보여요.\n\n내일도 이런 잔잔한 리듬으로 헤엄쳐보면 어떨까요?",
-  };
 }
 
 const PAD_L = 40;
@@ -154,16 +126,21 @@ function TimeFlowChart({ buckets, width, height }: TimeFlowChartProps) {
 export function DailyReportScreen({ navigation, route }: Props) {
   const [data, setData] = useState<DailyReportData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const chartW = Dimensions.get("window").width - 32 * 2;
 
   useEffect(() => {
     let alive = true;
     (async () => {
       setLoading(true);
+      setError(null);
       try {
-        // TODO: GET /reports/daily?date= → getDailyReportByDate(route.params.date)
-        await new Promise<void>((r) => setTimeout(r, 280));
-        if (alive) setData(buildMockDaily(route.params.date));
+        const next = await getDailyReportByDate(route.params.date);
+        if (alive) setData(next);
+      } catch (e) {
+        if (alive) {
+          setError(e instanceof Error ? e.message : "리포트를 불러오지 못했어요.");
+        }
       } finally {
         if (alive) setLoading(false);
       }
@@ -179,6 +156,18 @@ export function DailyReportScreen({ navigation, route }: Props) {
   }, [data]);
 
   if (loading || !data) {
+    if (!loading && error) {
+      return (
+        <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+          <View style={styles.loadingWrap}>
+            <AppText style={styles.errorText}>{error}</AppText>
+            <Pressable onPress={() => navigation.goBack()} style={styles.errorBackBtn}>
+              <AppText style={styles.errorBackLabel}>돌아가기</AppText>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      );
+    }
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.loadingWrap}>
@@ -233,7 +222,7 @@ export function DailyReportScreen({ navigation, route }: Props) {
         </View>
 
         <View style={[styles.card, styles.cardMargin]}>
-          <AppText style={styles.cardTitle}>주로 어떤 물결과 함께했나요</AppText>
+          <AppText style={styles.cardTitle}>시간대별 사용 비중</AppText>
           {data.category_usage.map((c) => (
             <View key={c.name} style={styles.catBlock}>
               <View style={styles.catRow}>
@@ -335,6 +324,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  errorText: {
+    color: TITLE,
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  errorBackBtn: {
+    marginTop: 16,
+    backgroundColor: MAIN,
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  errorBackLabel: {
+    color: "#FFFFFF",
+    fontSize: 15,
   },
   header: {
     flexDirection: "row",

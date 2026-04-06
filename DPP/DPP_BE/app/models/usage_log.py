@@ -41,6 +41,8 @@ class Daily_SnapShots(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    snapshot_date = Column(Date, nullable=True)
+    timezone = Column(String(100), nullable=True)
     package_name = Column(String, nullable=True)
     total_usage_check = Column(Integer, default=0)
     unlock_count = Column(Integer, default=0)
@@ -48,5 +50,11 @@ class Daily_SnapShots(Base):
     time_of_day_buckets_json = Column(JSONB, nullable=True)
     max_continuous_sec = Column(Integer, default=0)
     app_launch_count = Column(Integer, default=0)
+    per_app_usage_json = Column(JSONB, nullable=True)
+    per_category_usage_json = Column(JSONB, nullable=True)
+    timeline_buckets_json = Column(JSONB, nullable=True)
+    top_apps_json = Column(JSONB, nullable=True)
+    schema_version = Column(String(20), nullable=True)
+    source_hash = Column(String(255), nullable=True)
 
     user = relationship("Users", back_populates="daily_snap_shots")

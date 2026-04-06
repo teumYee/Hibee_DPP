@@ -6,6 +6,8 @@ export const ENDPOINTS = {
 
   /** 구현됨: POST /api/v1/logs */
   usageLogs: "/api/v1/logs",
+  /** 구현됨: POST /api/v1/logs/snapshots/v3 */
+  usageLogsSnapshotsV3: "/api/v1/logs/snapshots/v3",
   /** 구현됨: GET /api/v1/logs/{user_id} */
   usageLogsByUser: "/api/v1/logs",
 
@@ -56,16 +58,26 @@ export const ENDPOINTS = {
   dashboardToday: "/api/v1/dashboard/today",
   /** TODO: BE 미구현 */
   dashboardDailySummary: "/api/v1/dashboard/daily_summary",
-  /** TODO: BE 미구현 */
+  /** 구현됨: GET /api/v1/checkin/stats/night */
   checkinStatsNight: "/api/v1/checkin/stats/night",
-  /** TODO: BE 미구현 */
+  /** 구현됨: GET /api/v1/checkin/patterns */
   checkinPatterns: "/api/v1/checkin/patterns",
-  /** TODO: BE 미구현 */
+  /** 구현됨: POST /api/v1/checkin/submit */
   checkinSubmit: "/api/v1/checkin/submit",
+  /** 구현됨: POST /api/v1/reports/pattern-candidates/generate */
+  reportPatternCandidatesGenerate: "/api/v1/reports/pattern-candidates/generate",
   /** TODO: BE 미구현 */
   calendarSummary: "/api/v1/calendar/summary",
-  /** TODO: BE 미구현 */
+  /** 구현됨: GET /api/v1/reports/daily?date=YYYY-MM-DD */
   reportDaily: "/api/v1/reports/daily",
+  /** 구현됨: POST /api/v1/reports/daily/generate */
+  reportDailyGenerate: "/api/v1/reports/daily/generate",
+  /** 구현됨: GET /api/v1/reports/weekly?week_start=YYYY-MM-DD */
+  reportWeekly: "/api/v1/reports/weekly",
+  /** 구현됨: POST /api/v1/reports/weekly/generate */
+  reportWeeklyGenerate: "/api/v1/reports/weekly/generate",
+  /** 구현됨: GET /api/v1/reports/checkins?date=YYYY-MM-DD */
+  reportCheckins: "/api/v1/reports/checkins",
   /** TODO: BE 미구현 */
   storeInventory: "/api/v1/store/inventory",
   /** TODO: BE 미구현 */

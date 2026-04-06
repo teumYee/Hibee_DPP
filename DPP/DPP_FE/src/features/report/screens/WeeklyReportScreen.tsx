@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "reac
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
+import { getWeeklyReport } from "../../../services/api/report.api";
 import type { WeeklyReportData } from "../types";
 
 const MAIN = "#2E7FC1";
@@ -39,65 +40,25 @@ function formatWeekRangeSubtitle(startDate: string, endDate: string): string {
   return `${a.getMonth() + 1}월 ${a.getDate()}일 - ${b.getMonth() + 1}월 ${b.getDate()}일`;
 }
 
-const MOCK_WEEKLY: WeeklyReportData = {
-  week_id: "2026-W04",
-  start_date: "2026-01-25",
-  end_date: "2026-01-31",
-  ai_summary: "지난주보다 좋아졌어요",
-  avg_balance_score: 72,
-  checkin_count: 6,
-  main_activity_time: "오전 6시 ~ 오후 6시",
-  best_day: "화요일",
-  best_day_comment: "균형 잡힌 하루를 보냈어요",
-  improve_area: "심야 시간",
-  improve_area_comment: "2일 동안 심야 사용이 있었어요",
-  badge: "일요일 활동에 도전해보세요!",
-  dolphin_observations: [
-    "이번 주는 전체적으로 안정적인 리듬을 유지했어요.",
-    "특히 화요일에는 균형 잡힌 흐름이 인상적이었어요.",
-    "심야 시간이 조금 늘어났네요. 다음 주에는 조금 더 일찍 쉬어보는 건 어떨까요?",
-    "체크인을 꾸준히 해주셔서 함께 헤엄치는 느낌이 들었어요.",
-  ],
-  next_week_suggestions: [
-    "이번 주의 흐름을 유지하면서, 심야 시간을 조금씩 줄여보면 어떨까요?",
-    "매일 밤 조금 더 일찍 자는 걸 목표로 하는 건 좋은 흐름의 시작이 될 거예요.",
-  ],
-  category_usage: [
-    { name: "소셜", minutes: 85, color: "#2E7FC1" },
-    { name: "동영상", minutes: 62, color: "#FF6B9D" },
-    { name: "생산성", minutes: 43, color: "#FFB347" },
-    { name: "게임", minutes: 28, color: "#98FB98" },
-  ],
-  ai_comment: "이번 주도 함께 헤엄쳐줘서 고마워요.",
-};
-
-function buildMockFromRoute(
-  weekId: string,
-  startDate: string,
-  endDate: string,
-): WeeklyReportData {
-  return {
-    ...MOCK_WEEKLY,
-    week_id: weekId,
-    start_date: startDate,
-    end_date: endDate,
-  };
-}
-
 export function WeeklyReportScreen({ navigation, route }: Props) {
-  const { weekId, startDate, endDate } = route.params;
+  const { startDate } = route.params;
   const [data, setData] = useState<WeeklyReportData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       setLoading(true);
+      setError(null);
       try {
-        // TODO: GET /reports/weekly/{id} → getWeeklyReport(weekId), 응답을 WeeklyReportData로 매핑
-        await new Promise<void>((r) => setTimeout(r, 300));
+        const next = await getWeeklyReport(startDate);
         if (alive) {
-          setData(buildMockFromRoute(weekId, startDate, endDate));
+          setData(next);
+        }
+      } catch (e) {
+        if (alive) {
+          setError(e instanceof Error ? e.message : "주간 리포트를 불러오지 못했어요.");
         }
       } finally {
         if (alive) setLoading(false);
@@ -106,9 +67,21 @@ export function WeeklyReportScreen({ navigation, route }: Props) {
     return () => {
       alive = false;
     };
-  }, [weekId, startDate, endDate]);
+  }, [startDate]);
 
   if (loading || !data) {
+    if (!loading && error) {
+      return (
+        <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+          <View style={styles.loadingWrap}>
+            <AppText style={styles.errorText}>{error}</AppText>
+            <Pressable onPress={() => navigation.goBack()} style={styles.errorBackBtn}>
+              <AppText style={styles.errorBackLabel}>돌아가기</AppText>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      );
+    }
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.loadingWrap}>
@@ -247,6 +220,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  errorText: {
+    color: TITLE,
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  errorBackBtn: {
+    marginTop: 16,
+    backgroundColor: MAIN,
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  errorBackLabel: {
+    color: "#FFFFFF",
+    fontSize: 15,
   },
   header: {
     flexDirection: "row",

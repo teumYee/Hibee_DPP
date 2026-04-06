@@ -9,6 +9,7 @@ from app.api.v1.endpoints.calendar import router as calendar_router
 from app.api.v1.endpoints.gamification import router as gamification_router
 from app.api.v1.endpoints.challenges import router as challenges_router
 from app.api.v1.endpoints.social import router as social_router
+from app.api.v1.endpoints.checkin import router as checkin_router
 
 from pydoc import describe
 from fastapi import FastAPI, Depends, HTTPException
@@ -59,6 +60,7 @@ app.include_router(calendar_router, prefix="/api/v1/calendar", tags=["calendar"]
 app.include_router(gamification_router, prefix="/api/v1/gamification", tags=["gamification"])
 app.include_router(challenges_router, prefix="/api/v1/challenges", tags=["challenges"])
 app.include_router(social_router, prefix="/api/v1/social", tags=["social"])
+app.include_router(checkin_router, prefix="/api/v1/checkin", tags=["checkin"])
 
 
 @app.get("/")

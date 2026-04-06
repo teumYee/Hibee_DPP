@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from datetime import datetime, date
-from typing import List, Optional, Dict
+from typing import Any, List, Optional, Dict
 
 # 1. 안드로이드에서 보낼 데이터 형식 정의
 class AppUsageLogBase(BaseModel):
@@ -48,11 +48,16 @@ class AppUsageLogResponse(BaseModel):
 class DailySnapshotCreateV3(BaseModel):
     date: date
     timezone: str = "Asia/Seoul"
+    captured_at: Optional[datetime] = None
     total_usage_check: int = Field(default=0, ge=0)
     unlock_count: int = Field(default=0, ge=0)
     time_of_day_buckets_sec: Dict[str, int]
     max_continuous_sec: int = Field(default=0, ge=0)
     app_launch_count: int = Field(default=0, ge=0)
+    per_app_usage_json: List[Dict[str, Any]] = Field(default_factory=list)
+    per_category_usage_json: List[Dict[str, Any]] = Field(default_factory=list)
+    timeline_buckets_json: Dict[str, Any] = Field(default_factory=dict)
+    top_apps_json: List[Dict[str, Any]] = Field(default_factory=list)
     package_name: Optional[str] = None
     schema_version: str = "1.0.0"
     source_hash: Optional[str] = None
@@ -66,3 +71,4 @@ class DailySnapshotResponse(BaseModel):
     snapshot_id: int
     status: str
     upserted: bool
+    snapshot_date: date

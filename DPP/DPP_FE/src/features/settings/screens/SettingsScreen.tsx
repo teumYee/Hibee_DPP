@@ -131,7 +131,7 @@ export function SettingsScreen({ navigation }: Props) {
             onPress={() => navigation.navigate("SettingsEditGoals", {})}
           />
           <SettingsRow
-            title="심야 시간 다시 설정하기"
+            title="심야·체크인 기준 다시 설정하기"
             onPress={() => navigation.navigate("SettingsEditNightTime", {})}
           />
           <SettingsRow

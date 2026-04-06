@@ -29,6 +29,13 @@ from app.schemas.users import (
     OnboardingRequest,
     WeeklyGoalUpdateRequest,
 )
+from app.utils.checkin_policy import (
+    DEFAULT_CHECKIN_TIME,
+    DEFAULT_CHECKIN_WINDOW_MINUTES,
+    DEFAULT_DAY_ROLLOVER_TIME,
+    normalize_hhmm,
+    normalize_window_minutes,
+)
 
 router = APIRouter()
 
@@ -36,9 +43,20 @@ router = APIRouter()
 def _get_or_create_user_config(db: Session, user_id: int) -> User_Configs:
     config = db.query(User_Configs).filter(User_Configs.user_id == user_id).first()
     if config:
+        if not config.checkin_time:
+            config.checkin_time = DEFAULT_CHECKIN_TIME
+        if not config.checkin_window_minutes:
+            config.checkin_window_minutes = DEFAULT_CHECKIN_WINDOW_MINUTES
+        if not config.day_rollover_time:
+            config.day_rollover_time = DEFAULT_DAY_ROLLOVER_TIME
         return config
 
-    config = User_Configs(user_id=user_id)
+    config = User_Configs(
+        user_id=user_id,
+        checkin_time=DEFAULT_CHECKIN_TIME,
+        checkin_window_minutes=DEFAULT_CHECKIN_WINDOW_MINUTES,
+        day_rollover_time=DEFAULT_DAY_ROLLOVER_TIME,
+    )
     db.add(config)
     db.flush()
     return config
@@ -113,12 +131,14 @@ def save_onboarding(body: OnboardingRequest, db: Session = Depends(get_db)):
     config.active_times = body.active_times
     config.struggles = body.struggles
     config.focus_categories = body.focus_categories
-    config.night_mode_start = body.night_mode_start
-    config.night_mode_end = body.night_mode_end
-    config.checkin_time = config.checkin_time or "21:00"
+    config.night_mode_start = _validate_hhmm(body.night_mode_start, "night_mode_start")
+    config.night_mode_end = _validate_hhmm(body.night_mode_end, "night_mode_end")
+    config.checkin_time = _validate_hhmm(body.checkin_time, "checkin_time")
+    config.checkin_window_minutes = normalize_window_minutes(body.checkin_window_minutes)
+    config.day_rollover_time = _validate_hhmm(body.day_rollover_time, "day_rollover_time")
 
-    user.night_mode_start = body.night_mode_start
-    user.night_mode_end = body.night_mode_end
+    user.night_mode_start = config.night_mode_start
+    user.night_mode_end = config.night_mode_end
 
     _get_or_create_user_stats(db, current_user_id)
 
@@ -193,7 +213,9 @@ def update_checkin_time(
     db: Session = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
-    checkin_time = _validate_hhmm(body.checkin_time, "checkin_time")
+    checkin_time = normalize_hhmm(body.checkin_time, DEFAULT_CHECKIN_TIME)
+    if checkin_time != body.checkin_time.strip():
+        checkin_time = _validate_hhmm(body.checkin_time, "checkin_time")
     config = _get_or_create_user_config(db, current_user.id)
     config.checkin_time = checkin_time
     db.commit()
