@@ -122,6 +122,8 @@ def _fallback_rag(snapshot: Daily_SnapShots, checkin: CheckIn, user_config: User
     }
 
 
+# Deprecated: daily report retrieval responsibility moved to DPP_AI.
+# Kept temporarily for fallback/debugging until the old BE-side path is deleted.
 def _plan_rag_queries(
     snapshot: Daily_SnapShots,
     checkin: CheckIn,
@@ -247,14 +249,24 @@ def run_rag_agent(
     must_include = plan.get("must_include_concepts") or fallback["must_include_concepts"]
 
     retrieved_evidence = _hybrid_search_expert_knowledge(db, queries)
+    used_fallback_retrieval = False
     if not retrieved_evidence:
         retrieved_evidence = fallback["retrieved_evidence"]
+        used_fallback_retrieval = True
 
     return {
         "queries": queries,
         "filters": filters,
         "must_include_concepts": must_include,
         "retrieved_evidence": retrieved_evidence,
+        "retrieval_debug": {
+            "retrieval_ran": True,
+            "retrieval_skipped_reason": None,
+            "query_count": len(queries),
+            "evidence_count": len(retrieved_evidence),
+            "retrieval_source": "be_legacy_rag",
+            "used_fallback_retrieval": used_fallback_retrieval,
+        },
     }
 
 def _fallback_report_markdown(snapshot: Daily_SnapShots, checkin: CheckIn) -> str:
@@ -287,6 +299,160 @@ def _normalize_bucket_values(raw_buckets: Any) -> Dict[str, int]:
     return normalized
 
 
+def _normalize_timeline_buckets(raw_timeline: Any) -> Dict[str, int]:
+    canonical_order = ("00-04", "04-08", "08-12", "12-16", "16-20", "20-24")
+    normalized = {key: 0 for key in canonical_order}
+    if not isinstance(raw_timeline, dict):
+        return normalized
+
+    for key, value in raw_timeline.items():
+        bucket_key = str(key).strip()
+        if bucket_key not in normalized:
+            continue
+        try:
+            normalized[bucket_key] = int(value or 0)
+        except (TypeError, ValueError):
+            continue
+    return normalized
+
+
+def _normalize_top_app_items(raw_items: Any) -> List[Dict[str, Any]]:
+    if not isinstance(raw_items, list):
+        return []
+
+    normalized: List[Dict[str, Any]] = []
+    for item in raw_items:
+        if not isinstance(item, dict):
+            continue
+        package_name = str(item.get("package_name") or "").strip()
+        app_name = str(item.get("app_name") or package_name or "알 수 없는 앱").strip()
+        try:
+            usage_sec = int(item.get("usage_sec") or 0)
+        except (TypeError, ValueError):
+            usage_sec = 0
+        try:
+            launch_count = int(item.get("launch_count") or item.get("app_launch_count") or 0)
+        except (TypeError, ValueError):
+            launch_count = 0
+        try:
+            max_continuous_sec = int(
+                item.get("max_continuous_sec") or item.get("max_continuous_duration") or 0
+            )
+        except (TypeError, ValueError):
+            max_continuous_sec = 0
+        category = item.get("category")
+        normalized.append(
+            {
+                "package_name": package_name,
+                "app_name": app_name,
+                "usage_sec": max(0, usage_sec),
+                "launch_count": max(0, launch_count),
+                "max_continuous_sec": max(0, max_continuous_sec),
+                "category": str(category).strip() if category else None,
+            }
+        )
+    normalized.sort(key=lambda item: (-item["usage_sec"], -item["launch_count"], item["app_name"]))
+    return normalized
+
+
+def _normalize_category_usage_items(raw_items: Any) -> List[Dict[str, Any]]:
+    if not isinstance(raw_items, list):
+        return []
+
+    normalized: List[Dict[str, Any]] = []
+    for item in raw_items:
+        if not isinstance(item, dict):
+            continue
+        category = str(item.get("category") or "미분류").strip() or "미분류"
+        try:
+            usage_sec = int(item.get("usage_sec") or 0)
+        except (TypeError, ValueError):
+            usage_sec = 0
+        try:
+            app_count = int(item.get("app_count") or 0)
+        except (TypeError, ValueError):
+            app_count = 0
+        try:
+            launch_count = int(item.get("launch_count") or 0)
+        except (TypeError, ValueError):
+            launch_count = 0
+        normalized.append(
+            {
+                "category": category,
+                "usage_sec": max(0, usage_sec),
+                "app_count": max(0, app_count),
+                "launch_count": max(0, launch_count),
+            }
+        )
+    normalized.sort(key=lambda item: (-item["usage_sec"], -item["launch_count"], item["category"]))
+    return normalized
+
+
+def _snapshot_top_apps(snapshot: Daily_SnapShots) -> List[Dict[str, Any]]:
+    source = snapshot.top_apps_json if isinstance(snapshot.top_apps_json, list) else snapshot.per_app_usage_json
+    return _normalize_top_app_items(source)
+
+
+def _snapshot_category_usage(snapshot: Daily_SnapShots) -> List[Dict[str, Any]]:
+    return _normalize_category_usage_items(snapshot.per_category_usage_json)
+
+
+def _aggregate_weekly_top_apps(snapshots: List[Daily_SnapShots]) -> List[Dict[str, Any]]:
+    aggregated: Dict[str, Dict[str, Any]] = {}
+    for snapshot in snapshots:
+        for item in _snapshot_top_apps(snapshot):
+            key = item["package_name"] or item["app_name"]
+            if not key:
+                continue
+            current = aggregated.get(key)
+            if current is None:
+                aggregated[key] = dict(item)
+                continue
+            current["usage_sec"] += item["usage_sec"]
+            current["launch_count"] += item["launch_count"]
+            current["max_continuous_sec"] = max(
+                current["max_continuous_sec"],
+                item["max_continuous_sec"],
+            )
+            if not current.get("category") and item.get("category"):
+                current["category"] = item["category"]
+    ranked = list(aggregated.values())
+    ranked.sort(key=lambda item: (-item["usage_sec"], -item["launch_count"], item["app_name"]))
+    return ranked[:5]
+
+
+def _aggregate_weekly_category_usage(snapshots: List[Daily_SnapShots]) -> List[Dict[str, Any]]:
+    aggregated: Dict[str, Dict[str, Any]] = {}
+    category_packages: Dict[str, set[str]] = defaultdict(set)
+
+    for snapshot in snapshots:
+        for item in _snapshot_category_usage(snapshot):
+            category = item["category"]
+            current = aggregated.get(category)
+            if current is None:
+                aggregated[category] = dict(item)
+            else:
+                current["usage_sec"] += item["usage_sec"]
+                current["launch_count"] += item["launch_count"]
+
+        if isinstance(snapshot.per_app_usage_json, list):
+            for app_item in snapshot.per_app_usage_json:
+                if not isinstance(app_item, dict):
+                    continue
+                category = str(app_item.get("category") or "미분류").strip() or "미분류"
+                package_name = str(app_item.get("package_name") or app_item.get("app_name") or "").strip()
+                if package_name:
+                    category_packages[category].add(package_name)
+
+    ranked = []
+    for category, item in aggregated.items():
+        normalized = dict(item)
+        normalized["app_count"] = len(category_packages.get(category, set())) or item["app_count"]
+        ranked.append(normalized)
+    ranked.sort(key=lambda item: (-item["usage_sec"], -item["launch_count"], item["category"]))
+    return ranked
+
+
 def _markdown_to_plain_text(markdown: str | None) -> str | None:
     if not markdown:
         return None
@@ -311,6 +477,9 @@ def build_daily_report_response_payload(
     report_markdown: str | None,
 ) -> Dict[str, Any]:
     bucket_values = _normalize_bucket_values(snapshot.time_of_day_buckets_json)
+    timeline_buckets = _normalize_timeline_buckets(snapshot.timeline_buckets_json)
+    top_apps = _snapshot_top_apps(snapshot)[:5]
+    category_usage = _snapshot_category_usage(snapshot)
     selected_patterns = checkin.selected_patterns or []
     selected_titles = [
         pattern.get("title") or pattern.get("label")
@@ -369,6 +538,9 @@ def build_daily_report_response_payload(
             "max_continuous_sec": snapshot.max_continuous_sec or 0,
             "app_launch_count": snapshot.app_launch_count or 0,
             "time_of_day_buckets": bucket_values,
+            "timeline_buckets": timeline_buckets,
+            "top_apps": top_apps,
+            "per_category_usage": category_usage,
         },
     }
 
@@ -379,8 +551,6 @@ def run_daily_report_pipeline(
     user_config: User_Configs | None,
     db: Session,
 ) -> Tuple[Dict[str, Any], str, Dict[str, Any]]:
-    rag_result = run_rag_agent(snapshot, checkin, user_config, db)
-
     snapshot_payload = {
         "date": snapshot.snapshot_date.isoformat() if snapshot.snapshot_date else "",
         "total_usage_sec": snapshot.total_usage_check,
@@ -399,19 +569,43 @@ def run_daily_report_pipeline(
             "problem": checkin.kpt_problem,
             "try": checkin.kpt_try,
         },
-        "retrieved_evidence": rag_result.get("retrieved_evidence", []),
     }
 
+    retrieval_result = {
+        "queries": [],
+        "filters": {},
+        "must_include_concepts": [],
+        "retrieved_evidence": [],
+        "retrieval_debug": {},
+    }
     try:
         pipeline_result = run_report_pipeline_via_ai_service(pipeline_input)
         report_markdown = pipeline_result.get("report_markdown") or _fallback_report_markdown(snapshot, checkin)
         judge_results = pipeline_result.get("judge_results") or []
         last_judge = judge_results[-1] if judge_results else {}
+        retrieval_result = {
+            "queries": pipeline_result.get("queries") or [],
+            "filters": pipeline_result.get("filters") or {},
+            "must_include_concepts": pipeline_result.get("must_include_concepts") or [],
+            "retrieved_evidence": pipeline_result.get("retrieved_evidence") or [],
+            "retrieval_debug": pipeline_result.get("retrieval_debug") or {},
+        }
         review_result = {
             "verdict": pipeline_result.get("final_verdict", "FALLBACK"),
             "issues": last_judge.get("issues", []),
             "rewrite_brief": last_judge.get("rewrite_brief", ""),
         }
+        if not retrieval_result["queries"] or not retrieval_result["retrieved_evidence"]:
+            fallback_result = run_rag_agent(snapshot, checkin, user_config, db)
+            fallback_debug = fallback_result.get("retrieval_debug") or {}
+            fallback_debug["fallback_reason"] = (
+                "empty_queries"
+                if not retrieval_result["queries"]
+                else "empty_retrieved_evidence"
+            )
+            fallback_debug["retrieval_source"] = "be_fallback_after_ai"
+            fallback_result["retrieval_debug"] = fallback_debug
+            retrieval_result = fallback_result
     except Exception as exc:
         report_markdown = _fallback_report_markdown(snapshot, checkin)
         review_result = {
@@ -419,8 +613,9 @@ def run_daily_report_pipeline(
             "issues": [f"DPP_AI service call failed: {exc}"],
             "rewrite_brief": "",
         }
+        retrieval_result = run_rag_agent(snapshot, checkin, user_config, db)
 
-    return rag_result, report_markdown, review_result
+    return retrieval_result, report_markdown, review_result
 
 
 def normalize_week_start(target_date: date) -> date:
@@ -514,6 +709,8 @@ def build_weekly_report_response_payload(
     total_unlocks = 0
     total_launches = 0
     max_continuous = 0
+    top_apps = _aggregate_weekly_top_apps(snapshots)
+    category_usage = _aggregate_weekly_category_usage(snapshots)
 
     for snapshot in snapshots:
         usage = snapshot.total_usage_check or 0
@@ -572,6 +769,8 @@ def build_weekly_report_response_payload(
             "max_continuous_sec": max_continuous,
             "time_of_day_buckets": dict(bucket_totals),
             "daily_usage": daily_usage,
+            "top_apps": top_apps,
+            "per_category_usage": category_usage,
         },
         "evidence_refs": _build_weekly_evidence_refs(week_start, snapshots, checkins, daily_reports),
     }

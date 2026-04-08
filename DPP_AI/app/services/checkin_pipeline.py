@@ -8,10 +8,12 @@ from typing import Any, Dict, List, Optional
 
 from .checkin_writer import generate_pattern_candidates
 from .deterministic_check import run_deterministic_check
+from .evidence_retrieval import retrieve_checkin_evidence
 from .llm_judge import run_llm_judge
 
 logger = logging.getLogger("dpp_ai")
 MAX_ATTEMPTS = 3
+_QA_RESULTS_DISABLED = False
 
 
 def _log_to_qa_results(
@@ -34,7 +36,8 @@ def _log_to_qa_results(
         status,
         error_message,
     )
-    if db_session is not None:
+    global _QA_RESULTS_DISABLED
+    if db_session is not None and not _QA_RESULTS_DISABLED:
         try:
             from app.models.qa_result import QAResult
             if QAResult is not None:
@@ -49,7 +52,12 @@ def _log_to_qa_results(
                 db_session.add(row)
                 db_session.commit()
         except Exception as e:
-            logger.warning("qa_results insert failed: %s", e)
+            error_text = str(e)
+            if 'relation "qa_results" does not exist' in error_text:
+                _QA_RESULTS_DISABLED = True
+                logger.warning("qa_results table missing; disable DB qa logging")
+            else:
+                logger.warning("qa_results insert failed: %s", e)
             if db_session:
                 db_session.rollback()
 
@@ -94,6 +102,43 @@ def run_checkin_pipeline(
     behavior_breakdown = input_data.get("behavior_breakdown", {}) if isinstance(input_data, dict) else {}
     time_policy = input_data.get("time_policy", {}) if isinstance(input_data, dict) else {}
     user_configs = input_data.get("user_configs", {}) if isinstance(input_data, dict) else {}
+    retrieved_evidence = input_data.get("retrieved_evidence")
+    queries = input_data.get("queries")
+    filters = input_data.get("filters")
+    must_include_concepts = input_data.get("must_include_concepts")
+    retrieval_debug = input_data.get("retrieval_debug")
+    should_retrieve = (
+        not isinstance(retrieved_evidence, list)
+        or len(retrieved_evidence) == 0
+        or not isinstance(queries, list)
+        or len(queries) == 0
+    )
+    if should_retrieve:
+        retrieval_result = retrieve_checkin_evidence(
+            snapshot,
+            behavior_breakdown,
+            time_policy,
+            user_configs,
+            db_session=db_session,
+        )
+        retrieved_evidence = retrieval_result.get("retrieved_evidence", [])
+        queries = retrieval_result.get("queries", [])
+        filters = retrieval_result.get("filters", {})
+        must_include_concepts = retrieval_result.get("must_include_concepts", [])
+        retrieval_debug = retrieval_result.get("retrieval_debug", {})
+    else:
+        queries = queries if isinstance(queries, list) else []
+        filters = filters if isinstance(filters, dict) else {}
+        must_include_concepts = (
+            must_include_concepts if isinstance(must_include_concepts, list) else []
+        )
+        retrieval_debug = retrieval_debug if isinstance(retrieval_debug, dict) else {
+            "retrieval_ran": False,
+            "retrieval_skipped_reason": "caller_provided_retrieval",
+            "query_count": len(queries),
+            "evidence_count": len(retrieved_evidence),
+            "query_stats": [],
+        }
 
     writer_output: Optional[Dict[str, Any]] = None
     deterministic_result: Optional[Dict[str, Any]] = None
@@ -111,6 +156,7 @@ def run_checkin_pipeline(
                 user_configs,
                 behavior_breakdown=behavior_breakdown,
                 time_policy=time_policy,
+                retrieved_evidence=retrieved_evidence,
                 rewrite_instructions=rewrite_instructions,
             )
             if log_to_db:
@@ -148,6 +194,11 @@ def run_checkin_pipeline(
                 "final_verdict": "FAIL",
                 "attempts": attempts,
                 "judge_results": judge_results,
+                "queries": queries,
+                "filters": filters,
+                "must_include_concepts": must_include_concepts,
+                "retrieved_evidence": retrieved_evidence,
+                "retrieval_debug": retrieval_debug,
                 "error": str(e),
             }
 
@@ -180,7 +231,11 @@ def run_checkin_pipeline(
             break
 
         if writer_output:
-            judge_result = run_llm_judge(writer_output)
+            judge_result = run_llm_judge(
+                writer_output,
+                snapshot=snapshot,
+                retrieved_evidence=retrieved_evidence,
+            )
             judge_results.append(judge_result)
             if log_to_db:
                 _log_to_qa_results(
@@ -209,4 +264,9 @@ def run_checkin_pipeline(
         "final_verdict": final_verdict,
         "attempts": attempts,
         "judge_results": judge_results,
+        "queries": queries,
+        "filters": filters,
+        "must_include_concepts": must_include_concepts,
+        "retrieved_evidence": retrieved_evidence,
+        "retrieval_debug": retrieval_debug,
     }

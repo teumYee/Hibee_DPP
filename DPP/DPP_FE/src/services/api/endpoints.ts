@@ -16,6 +16,8 @@ export const ENDPOINTS = {
 
   /** TODO: BE 미구현 */
   usersMeSummary: "/api/v1/users/me/summary",
+  /** 구현됨: GET /api/v1/users/me/bootstrap */
+  usersMeBootstrap: "/api/v1/users/me/bootstrap",
   /** TODO: BE 미구현 */
   userLevel: "/api/v1/users/me/level",
   /** TODO: BE 미구현 */

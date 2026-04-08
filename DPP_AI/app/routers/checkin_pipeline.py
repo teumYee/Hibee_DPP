@@ -3,15 +3,16 @@
 """
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.core.database import get_db
 from app.services.checkin_pipeline import run_checkin_pipeline
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 @router.post("/checkin-pipeline")
-def run_pipeline(body: Dict[str, Any]):
+def run_pipeline(body: Dict[str, Any], db_session: Any = Depends(get_db)):
     """
     체크인 QA 파이프라인 실행:
     1. checkin_writer (GPT-4o-mini 패턴 후보 생성)
@@ -23,7 +24,7 @@ def run_pipeline(body: Dict[str, Any]):
         result = run_checkin_pipeline(
             body,
             log_to_db=True,
-            db_session=None,  # TODO: Depends(get_db) 로 주입
+            db_session=db_session,
         )
         return result
     except Exception as e:

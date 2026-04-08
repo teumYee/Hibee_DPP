@@ -14,7 +14,7 @@ class OnboardingRequest(BaseModel):
     night_mode_end: str = "7:00"
     checkin_time: str = "21:00"
     checkin_window_minutes: int = 120
-    day_rollover_time: str = "04:00"
+    day_rollover_time: str = "21:00"
 
 class CustomCategoryItem(BaseModel):
     package_name:str

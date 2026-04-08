@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.runtime_flags import DEV_RELAXED_MODE
 from app.models.calendar import CheckIn, PatternCandidatesDaily
 from app.models.usage_log import Daily_SnapShots
 from app.models.user import User_Configs, Users
@@ -20,6 +21,7 @@ from app.schemas.checkin import (
 from app.utils.checkin_policy import (
     CANONICAL_PACKAGE_NAME,
     current_logical_date,
+    ensure_checkin_open,
 )
 from app.utils.pattern_candidates import normalize_pattern_candidates
 
@@ -121,8 +123,11 @@ def get_checkin_night_stats(
     current_user: Users = Depends(get_current_user),
 ):
     user_config = db.query(User_Configs).filter(User_Configs.user_id == current_user.id).first()
-    # 테스트 모드: 체크인 허용 시간창 제한을 잠시 비활성화한다.
-    today = current_logical_date(user_config)
+    today = (
+        current_logical_date(user_config)
+        if DEV_RELAXED_MODE
+        else ensure_checkin_open(user_config)["logical_date"]
+    )
     snap = (
         db.query(Daily_SnapShots)
         .filter(
@@ -142,8 +147,11 @@ def get_checkin_patterns(
     current_user: Users = Depends(get_current_user),
 ):
     user_config = db.query(User_Configs).filter(User_Configs.user_id == current_user.id).first()
-    # 테스트 모드: 체크인 허용 시간창 제한을 잠시 비활성화한다.
-    today = current_logical_date(user_config)
+    today = (
+        current_logical_date(user_config)
+        if DEV_RELAXED_MODE
+        else ensure_checkin_open(user_config)["logical_date"]
+    )
     record = (
         db.query(PatternCandidatesDaily)
         .filter(
@@ -164,8 +172,11 @@ def submit_checkin_app(
     current_user: Users = Depends(get_current_user),
 ):
     user_config = db.query(User_Configs).filter(User_Configs.user_id == current_user.id).first()
-    # 테스트 모드: 체크인 허용 시간창 제한을 잠시 비활성화한다.
-    today = current_logical_date(user_config)
+    today = (
+        current_logical_date(user_config)
+        if DEV_RELAXED_MODE
+        else ensure_checkin_open(user_config)["logical_date"]
+    )
     pairs = _pairs_from_submit(body)
 
     record = (

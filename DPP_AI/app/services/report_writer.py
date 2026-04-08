@@ -80,7 +80,7 @@ def generate_report(
 - snapshot: 총 사용시간, 앱별 사용시간, 주요 수치 → 리포트 전반의 사실 근거
 - selected_patterns: 사용자가 직접 선택한 오늘의 패턴 (e.g. 집중 시간대, 주로 쓴 앱 유형) → 2~3줄 맥락 서술에 활용
 - kpt.keep / kpt.problem / kpt.try: 사용자가 직접 작성한 회고 → 요약·인정 형태로 반영
-- retrieved_evidence: 비어있으면 무시. 있으면 관련 항목을 "참고" 형태로 자연스럽게 언급 (출처 인용 X)
+- retrieved_evidence: 비어있으면 무시. 1개 이상 있으면 최소 1문장 이상 실제로 반영한다. 출처 인용은 하지 않되, 오늘의 사용 흐름과 연결되는 일반 원칙을 자연스럽게 녹여 쓴다.
 - rewrite_brief: 있으면 반드시 반영. 없으면 무시.
 
 [리포트 마크다운 구조 — 반드시 이 순서로]
@@ -95,6 +95,7 @@ def generate_report(
 
 [절대 금지]
 - snapshot에 없는 수치 생성
+- retrieved_evidence가 있는데 이를 완전히 무시한 초안 작성
 - "해야 합니다" "반드시" 등 지시형 표현
 - 비난·훈계·평가 톤
 - 의료·심리 진단

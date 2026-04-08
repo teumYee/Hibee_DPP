@@ -95,7 +95,7 @@ class User_Configs(Base):
     focus_categories = Column(JSON, nullable=True)
     checkin_time = Column(String(255), nullable=True)
     checkin_window_minutes = Column(Integer, nullable=False, default=120)
-    day_rollover_time = Column(String(5), nullable=False, default="04:00")
+    day_rollover_time = Column(String(5), nullable=False, default="21:00")
 
     user = relationship("Users", back_populates="user_config")
 

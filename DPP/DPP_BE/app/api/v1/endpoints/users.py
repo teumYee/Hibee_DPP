@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import or_
@@ -48,7 +49,7 @@ def _get_or_create_user_config(db: Session, user_id: int) -> User_Configs:
         if not config.checkin_window_minutes:
             config.checkin_window_minutes = DEFAULT_CHECKIN_WINDOW_MINUTES
         if not config.day_rollover_time:
-            config.day_rollover_time = DEFAULT_DAY_ROLLOVER_TIME
+            config.day_rollover_time = config.checkin_time or DEFAULT_DAY_ROLLOVER_TIME
         return config
 
     config = User_Configs(
@@ -98,6 +99,63 @@ def _validate_hhmm(value: str, field_name: str) -> str:
     return f"{hour:02d}:{minute:02d}"
 
 
+def _serialize_onboarding_data(config: User_Configs | None) -> Dict[str, Any]:
+    goals = config.goals if config and isinstance(config.goals, list) else []
+    active_times = config.active_times if config and isinstance(config.active_times, list) else []
+    struggles = config.struggles if config and isinstance(config.struggles, list) else []
+    focus_categories = (
+        config.focus_categories if config and isinstance(config.focus_categories, list) else []
+    )
+    return {
+        "goals": goals,
+        "active_times": active_times,
+        "night_mode_start": (
+            config.night_mode_start
+            if config and config.night_mode_start
+            else "23:00"
+        ),
+        "night_mode_end": (
+            config.night_mode_end
+            if config and config.night_mode_end
+            else "07:00"
+        ),
+        "checkin_time": (
+            config.checkin_time
+            if config and config.checkin_time
+            else DEFAULT_CHECKIN_TIME
+        ),
+        "checkin_window_minutes": normalize_window_minutes(
+            config.checkin_window_minutes if config else None
+        ),
+        "day_rollover_time": (
+            config.day_rollover_time
+            if config and config.day_rollover_time
+            else (
+                config.checkin_time
+                if config and config.checkin_time
+                else DEFAULT_DAY_ROLLOVER_TIME
+            )
+        ),
+        "struggles": struggles,
+        "focus_categories": focus_categories,
+    }
+
+
+def _is_onboarding_completed(config: User_Configs | None) -> bool:
+    if not config:
+        return False
+    goals = config.goals if isinstance(config.goals, list) else []
+    active_times = config.active_times if isinstance(config.active_times, list) else []
+    return bool(
+        goals
+        and active_times
+        and config.night_mode_start
+        and config.night_mode_end
+        and config.checkin_time
+        and config.day_rollover_time
+    )
+
+
 @router.post("/nickname")
 def save_nickname(body: NicknameRequest, db: Session = Depends(get_db)):
     user = db.query(Users).filter(Users.id == body.user_id).first()
@@ -116,6 +174,20 @@ def save_nickname(body: NicknameRequest, db: Session = Depends(get_db)):
         )
 
     return {"message": "닉네임 저장 완료"}
+
+
+@router.get("/me/bootstrap")
+def get_me_bootstrap(
+    db: Session = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    config = db.query(User_Configs).filter(User_Configs.user_id == current_user.id).first()
+    return {
+        "user_id": current_user.id,
+        "nickname": current_user.nickname,
+        "onboarding_completed": _is_onboarding_completed(config),
+        "onboarding_data": _serialize_onboarding_data(config),
+    }
 
 
 @router.post("/onboarding")
@@ -218,6 +290,7 @@ def update_checkin_time(
         checkin_time = _validate_hhmm(body.checkin_time, "checkin_time")
     config = _get_or_create_user_config(db, current_user.id)
     config.checkin_time = checkin_time
+    config.day_rollover_time = checkin_time
     db.commit()
 
     return {
@@ -319,6 +392,8 @@ def delete_my_app_data(
     config.night_mode_start = "23:00"
     config.night_mode_end = "07:00"
     config.checkin_time = "21:00"
+    config.checkin_window_minutes = DEFAULT_CHECKIN_WINDOW_MINUTES
+    config.day_rollover_time = DEFAULT_DAY_ROLLOVER_TIME
 
     stats = _get_or_create_user_stats(db, user_id)
     stats.current_title_id = None

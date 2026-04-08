@@ -1,14 +1,20 @@
 import { AppText } from "../../../components/AppText";
+import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from "react-native";
+import { Alert, Pressable, StyleSheet, View } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { DEV_RELAXED_MODE } from "../../../config/devMode";
 import type { MainStackParamList } from "../../../navigation/types";
 import { getCheckinPatterns } from "../../../services/api/checkin.api";
 import { prepareCheckinPatterns } from "../services/prepareCheckin";
+import {
+  buildCheckinWindowMessage,
+  getCheckinWindowState,
+} from "../utils/checkinPolicy";
 
 const BG = "#0D2E5C";
 const MOON = "#FFD700";
@@ -22,7 +28,9 @@ export function CheckinIntroScreen({ navigation }: Props) {
   const onStart = useCallback(async () => {
     setLoading(true);
     try {
-      // 테스트 모드: 기존 후보가 있어도 매번 다시 생성해본다.
+      if (!DEV_RELAXED_MODE && !getCheckinWindowState().isOpen) {
+        throw new Error(buildCheckinWindowMessage());
+      }
       await prepareCheckinPatterns();
       const res = await getCheckinPatterns();
       if (res.patterns.length === 0) {
@@ -78,11 +86,7 @@ export function CheckinIntroScreen({ navigation }: Props) {
           accessibilityRole="button"
           accessibilityLabel="시작하기"
         >
-          {loading ? (
-            <ActivityIndicator color="#2E7FC1" />
-          ) : (
-            <AppText style={styles.primaryLabel}>시작하기</AppText>
-          )}
+          <AppText style={styles.primaryLabel}>시작하기</AppText>
         </Pressable>
         <Pressable
           style={styles.skipBtn}
@@ -92,6 +96,11 @@ export function CheckinIntroScreen({ navigation }: Props) {
           <AppText style={styles.skipLabel}>지금은 한 번 넘어갈게요</AppText>
         </Pressable>
       </View>
+      <LoadingOverlay
+        visible={loading}
+        title="체크인을 준비하고 있어요"
+        message="오늘 패턴과 스냅샷을 불러오는 중이에요."
+      />
     </SafeAreaView>
   );
 }

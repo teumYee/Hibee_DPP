@@ -33,6 +33,14 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
 
     /** 짧은 BG→FG(권한창·PiP·멀티윈도우 등)마다 방문으로 잡히는 것 완화 */
     private val launchCountMinGapMs = 25_000L
+    private val prefsName = "usage_prefs"
+    private val keyUnlockCount = "unlock_count"
+    private val keyLastUnlockDate = "last_unlock_date"
+    private val keyLastCompletedUnlockCount = "last_completed_unlock_count"
+    private val keyLastCompletedLogicalDate = "last_completed_logical_date"
+    private val keyDayRolloverTime = "day_rollover_time"
+    private val defaultDayRolloverTime = "21:00"
+    private val dayMs = 24L * 60L * 60L * 1000L
 
     @ReactMethod
     fun checkPermission(promise: Promise) {
@@ -194,27 +202,14 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
         }
     }
 
-    /**
-     * 오늘 0시부터 현재까지의 앱 사용 기록 조회
-     */
-    @ReactMethod
-    fun getTodayUsage(promise: Promise) {
+    private fun queryUsageWindow(startOfDay: Long, rangeEnd: Long, promise: Promise) {
         if (!hasUsageAccessPermission(reactCtx)) {
             promise.reject("NO_PERMISSION", "Usage access not granted")
             return
         }
 
-        val now = System.currentTimeMillis()
-        val startOfDay = Calendar.getInstance().apply {
-            timeInMillis = now
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-
         val usm = reactCtx.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        val events = usm.queryEvents(startOfDay, now) ?: return promise.resolve(Arguments.createArray())
+        val events = usm.queryEvents(startOfDay, rangeEnd) ?: return promise.resolve(Arguments.createArray())
         val pm = reactCtx.packageManager
         val packageUsageMap = mutableMapOf<String, PackageUsage>()
 
@@ -272,16 +267,16 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
 
         packageUsageMap.values.forEach { usage ->
             if (usage.foregroundStartTime > 0L) {
-                val duration = now - usage.foregroundStartTime
+                val duration = rangeEnd - usage.foregroundStartTime
                 usage.totalTime += duration
-                usage.lastTimeStamp = now
+                usage.lastTimeStamp = rangeEnd
             }
         }
 
         // queryEvents 는 OS가 보관하는 이벤트 개수에 한계가 있어, 하루가 길면 이른 사용 기록이 잘려
         // 수 분만 집계되는 현상이 난다. 총 foreground 시간은 queryUsageStats 집계로 덮어쓴다.
         val statsList: List<UsageStats> =
-            usm.queryUsageStats(UsageStatsManager.INTERVAL_BEST, startOfDay, now) ?: emptyList()
+            usm.queryUsageStats(UsageStatsManager.INTERVAL_BEST, startOfDay, rangeEnd) ?: emptyList()
         for (s in statsList) {
             val pkg = s.packageName ?: continue
             val fg = s.totalTimeInForeground
@@ -298,7 +293,7 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
                         val a = (lastUsed - fg).coerceAtLeast(startOfDay)
                         a to lastUsed.coerceAtLeast(a)
                     } else {
-                        startOfDay to now
+                        startOfDay to rangeEnd
                     }
                 packageUsageMap[pkg] = PackageUsage(
                     packageName = pkg,
@@ -345,13 +340,57 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
     }
 
     /**
+     * 현재 logical day 구간의 앱 사용 기록 조회
+     */
+    @ReactMethod
+    fun getTodayUsage(promise: Promise) {
+        val now = System.currentTimeMillis()
+        val startOfDay = startOfLogicalDay(now, getStoredDayRolloverTime())
+        queryUsageWindow(startOfDay, now, promise)
+    }
+
+    @ReactMethod
+    fun getUsageForDayOffset(offsetDays: Int, promise: Promise) {
+        val now = System.currentTimeMillis()
+        val currentStart = startOfLogicalDay(now, getStoredDayRolloverTime())
+        val targetStart = currentStart + offsetDays.toLong() * dayMs
+        val targetEnd = minOf(now, targetStart + dayMs)
+        if (targetEnd <= targetStart) {
+            promise.resolve(Arguments.createArray())
+            return
+        }
+        queryUsageWindow(targetStart, targetEnd, promise)
+    }
+
+    /**
      * SharedPreferences에서 오늘 저장된 총 언락 횟수 가져오기
      */
     @ReactMethod
     fun getUnlockCount(promise: Promise) {
-        val prefs = reactCtx.getSharedPreferences("usage_prefs", Context.MODE_PRIVATE)
-        val count = prefs.getInt("unlock_count", 0)
+        val prefs = reactCtx.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+        rolloverUnlockCountIfNeeded(prefs, System.currentTimeMillis())
+        val count = prefs.getInt(keyUnlockCount, 0)
         promise.resolve(count)
+    }
+
+    @ReactMethod
+    fun getLatestCompletedUnlockCount(promise: Promise) {
+        val now = System.currentTimeMillis()
+        val prefs = reactCtx.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+        rolloverUnlockCountIfNeeded(prefs, now)
+        val latestCompletedDate = latestCompletedLogicalDateString(now, getStoredDayRolloverTime())
+        val storedDate = prefs.getString(keyLastCompletedLogicalDate, null)
+        if (storedDate != latestCompletedDate) {
+            promise.resolve(0)
+            return
+        }
+        promise.resolve(prefs.getInt(keyLastCompletedUnlockCount, 0))
+    }
+
+    @ReactMethod
+    fun setDayRolloverTime(value: String) {
+        val prefs = reactCtx.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+        prefs.edit().putString(keyDayRolloverTime, normalizeHhMm(value)).apply()
     }
 
     /** 패키지명으로 런처 아이콘 PNG base64 (대시보드 등) */
@@ -373,8 +412,14 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
      */
     @ReactMethod
     fun resetUnlockCount() {
-        val prefs = reactCtx.getSharedPreferences("usage_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putInt("unlock_count", 0).apply()
+        val prefs = reactCtx.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putInt(keyUnlockCount, 0)
+            .putString(
+                keyLastUnlockDate,
+                logicalDateString(System.currentTimeMillis(), getStoredDayRolloverTime()),
+            )
+            .apply()
     }
 
     private data class PackageUsage(
@@ -409,6 +454,72 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
         return true
     }
 
+    private fun getStoredDayRolloverTime(): String {
+        val prefs = reactCtx.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+        return prefs.getString(keyDayRolloverTime, defaultDayRolloverTime) ?: defaultDayRolloverTime
+    }
+
+    private fun rolloverUnlockCountIfNeeded(
+        prefs: android.content.SharedPreferences,
+        nowMs: Long,
+    ) {
+        val rolloverTime = getStoredDayRolloverTime()
+        val currentLogicalDate = logicalDateString(nowMs, rolloverTime)
+        val storedLogicalDate = prefs.getString(keyLastUnlockDate, null)
+        if (storedLogicalDate == null) {
+            prefs.edit().putString(keyLastUnlockDate, currentLogicalDate).apply()
+            return
+        }
+        if (storedLogicalDate == currentLogicalDate) {
+            return
+        }
+        val previousCount = prefs.getInt(keyUnlockCount, 0)
+        prefs.edit()
+            .putInt(keyLastCompletedUnlockCount, previousCount)
+            .putString(keyLastCompletedLogicalDate, storedLogicalDate)
+            .putInt(keyUnlockCount, 0)
+            .putString(keyLastUnlockDate, currentLogicalDate)
+            .apply()
+    }
+
+    private fun logicalDateString(nowMs: Long, rolloverTime: String): String {
+        return java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            .format(java.util.Date(startOfLogicalDay(nowMs, rolloverTime)))
+    }
+
+    private fun latestCompletedLogicalDateString(nowMs: Long, rolloverTime: String): String {
+        return java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            .format(java.util.Date(startOfLogicalDay(nowMs, rolloverTime) - dayMs))
+    }
+
+    private fun startOfLogicalDay(nowMs: Long, rolloverTime: String): Long {
+        val (rolloverHour, rolloverMinute) = parseHhMm(rolloverTime)
+        val now = Calendar.getInstance().apply { timeInMillis = nowMs }
+        val boundary = Calendar.getInstance().apply {
+            timeInMillis = nowMs
+            set(Calendar.HOUR_OF_DAY, rolloverHour)
+            set(Calendar.MINUTE, rolloverMinute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        if (now.before(boundary)) {
+            boundary.add(Calendar.DATE, -1)
+        }
+        return boundary.timeInMillis
+    }
+
+    private fun normalizeHhMm(value: String?): String {
+        val (hour, minute) = parseHhMm(value ?: defaultDayRolloverTime)
+        return String.format("%02d:%02d", hour, minute)
+    }
+
+    private fun parseHhMm(value: String): Pair<Int, Int> {
+        val parts = value.trim().split(":")
+        val hour = parts.getOrNull(0)?.toIntOrNull()?.coerceIn(0, 23) ?: 21
+        val minute = parts.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 59) ?: 0
+        return hour to minute
+    }
+
     private fun hasUsageAccessPermission(ctx: Context): Boolean {
         val appOps = ctx.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
         val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -422,12 +533,7 @@ class UsageStatsModule(private val reactCtx: ReactApplicationContext) :
     // UsageEvents 정밀 추출 모듈
 
     private fun getstartOfDay(): Long {
-    return Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, 0)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-    }.timeInMillis
+    return startOfLogicalDay(System.currentTimeMillis(), getStoredDayRolloverTime())
 }
 
     @ReactMethod

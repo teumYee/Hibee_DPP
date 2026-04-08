@@ -17,9 +17,11 @@ export function RootNavigator() {
 
   const initialRouteName: keyof RootStackParamList =
     isAuthed && onboardingDone ? "Main" : "Onboarding";
+  const navigatorKey = `${isAuthed ? "authed" : "guest"}-${onboardingDone ? "done" : "todo"}`;
 
   return (
     <Stack.Navigator
+      key={navigatorKey}
       initialRouteName={initialRouteName}
       screenOptions={{ headerShown: false }}
     >

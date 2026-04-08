@@ -10,6 +10,23 @@ export type GetUserSummaryResponse = {
   streak_days: number;
 };
 
+export type UserBootstrapResponse = {
+  user_id: number;
+  nickname: string | null;
+  onboarding_completed: boolean;
+  onboarding_data: {
+    goals: string[];
+    active_times: string[];
+    night_mode_start: string;
+    night_mode_end: string;
+    checkin_time: string;
+    checkin_window_minutes: number;
+    day_rollover_time: string;
+    struggles: string[];
+    focus_categories: string[];
+  };
+};
+
 export type PostNicknameRequest = {
   user_id: number;
   nickname: string;
@@ -54,6 +71,10 @@ export async function getUserSummary(): Promise<GetUserSummaryResponse> {
   return get<GetUserSummaryResponse>(ENDPOINTS.usersMeSummary, {
     user_id: userId,
   });
+}
+
+export async function getUserBootstrap(): Promise<UserBootstrapResponse> {
+  return get<UserBootstrapResponse>(ENDPOINTS.usersMeBootstrap);
 }
 
 export async function postNickname(body: PostNicknameRequest): Promise<void> {

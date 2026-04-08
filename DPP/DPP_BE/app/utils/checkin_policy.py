@@ -11,7 +11,7 @@ from app.models.user import User_Configs
 CANONICAL_PACKAGE_NAME = "__all__"
 DEFAULT_CHECKIN_TIME = "21:00"
 DEFAULT_CHECKIN_WINDOW_MINUTES = 120
-DEFAULT_DAY_ROLLOVER_TIME = "04:00"
+DEFAULT_DAY_ROLLOVER_TIME = DEFAULT_CHECKIN_TIME
 DEFAULT_TIMEZONE = "Asia/Seoul"
 
 
@@ -65,18 +65,19 @@ def policy_from_config(
     *,
     timezone_name: str | None = None,
 ) -> CheckinPolicy:
+    checkin_time = normalize_hhmm(
+        user_config.checkin_time if user_config else None,
+        DEFAULT_CHECKIN_TIME,
+    )
     return CheckinPolicy(
         timezone=(timezone_name or "").strip() or DEFAULT_TIMEZONE,
-        checkin_time=normalize_hhmm(
-            user_config.checkin_time if user_config else None,
-            DEFAULT_CHECKIN_TIME,
-        ),
+        checkin_time=checkin_time,
         checkin_window_minutes=normalize_window_minutes(
             user_config.checkin_window_minutes if user_config else None,
         ),
         day_rollover_time=normalize_hhmm(
             user_config.day_rollover_time if user_config else None,
-            DEFAULT_DAY_ROLLOVER_TIME,
+            checkin_time,
         ),
     )
 
@@ -111,6 +112,51 @@ def current_logical_date(
     )
 
 
+def latest_completed_logical_date(
+    user_config: User_Configs | None,
+    *,
+    timezone_name: str | None = None,
+    now: datetime | None = None,
+) -> date:
+    return current_logical_date(
+        user_config,
+        timezone_name=timezone_name,
+        now=now,
+    ) - timedelta(days=1)
+
+
+def logical_date_bounds(
+    logical_date: date,
+    *,
+    day_rollover_time: str,
+    timezone_name: str | None = None,
+) -> tuple[datetime, datetime]:
+    zone = _safe_zoneinfo(timezone_name)
+    rollover = hhmm_to_time(day_rollover_time, DEFAULT_DAY_ROLLOVER_TIME)
+    start_local = datetime.combine(logical_date, rollover, tzinfo=zone)
+    end_local = start_local + timedelta(days=1)
+    return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
+
+
+def current_logical_bounds(
+    user_config: User_Configs | None,
+    *,
+    timezone_name: str | None = None,
+    now: datetime | None = None,
+) -> tuple[datetime, datetime]:
+    policy = policy_from_config(user_config, timezone_name=timezone_name)
+    logical_date = resolve_logical_date(
+        now or datetime.now(timezone.utc),
+        day_rollover_time=policy.day_rollover_time,
+        timezone_name=policy.timezone,
+    )
+    return logical_date_bounds(
+        logical_date,
+        day_rollover_time=policy.day_rollover_time,
+        timezone_name=policy.timezone,
+    )
+
+
 def checkin_window_state(
     user_config: User_Configs | None,
     *,
@@ -121,22 +167,21 @@ def checkin_window_state(
     zone = _safe_zoneinfo(policy.timezone)
     current = now or datetime.now(timezone.utc)
     local_now = (current if current.tzinfo else current.replace(tzinfo=timezone.utc)).astimezone(zone)
-    logical_date = resolve_logical_date(
+    current_logical = resolve_logical_date(
         local_now,
         day_rollover_time=policy.day_rollover_time,
         timezone_name=policy.timezone,
     )
-    center = datetime.combine(
-        logical_date,
+    window_start = datetime.combine(
+        current_logical,
         hhmm_to_time(policy.checkin_time, DEFAULT_CHECKIN_TIME),
         tzinfo=zone,
     )
-    delta = timedelta(minutes=policy.checkin_window_minutes)
-    window_start = center - delta
-    window_end = center + delta
+    window_end = window_start + timedelta(minutes=policy.checkin_window_minutes)
     return {
         "is_open": window_start <= local_now <= window_end,
-        "logical_date": logical_date,
+        "logical_date": current_logical,
+        "current_logical_date": current_logical,
         "window_start": window_start,
         "window_end": window_end,
         "local_now": local_now,

@@ -28,7 +28,7 @@ function emptyOnboardingDraft(): OnboardingDraft {
     night_mode_end: "",
     checkin_time: "21:00",
     checkin_window_minutes: 120,
-    day_rollover_time: "04:00",
+    day_rollover_time: "21:00",
     struggles: [],
     focus_categories: [],
     categories: [],
@@ -61,7 +61,7 @@ function parseOnboardingDraft(raw: string | null): OnboardingDraft {
         ? o.checkin_window_minutes
         : 120;
     const day_rollover_time =
-      typeof o.day_rollover_time === "string" ? o.day_rollover_time : "04:00";
+      typeof o.day_rollover_time === "string" ? o.day_rollover_time : checkin_time;
     const struggles = Array.isArray(o.struggles)
       ? o.struggles.filter((x): x is string => typeof x === "string")
       : [];
@@ -124,6 +124,7 @@ type AuthState = {
   setUserId: (userId: number | null) => Promise<void>;
   setOnboardingDone: (done: boolean) => Promise<void>;
   setOnboardingData: (patch: Partial<OnboardingDraft>) => Promise<void>;
+  replaceOnboardingData: (next: OnboardingDraft) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -183,6 +184,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const merged: OnboardingDraft = { ...get().onboardingData, ...patch };
     set({ onboardingData: merged });
     await AsyncStorage.setItem(KEY_ONBOARDING_DATA, JSON.stringify(merged));
+  },
+
+  replaceOnboardingData: async (next) => {
+    set({ onboardingData: next });
+    await AsyncStorage.setItem(KEY_ONBOARDING_DATA, JSON.stringify(next));
   },
 
   logout: async () => {

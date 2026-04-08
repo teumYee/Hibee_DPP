@@ -85,6 +85,7 @@ def upload_logs(
         raise HTTPException(status_code=404, detail="User not found.")
     
     added_count = 0
+    updated_count = 0
 
     for log_item in log_data.logs:
         # 1. 중복 검사: 패키지명과 시작 시간이 모두 같은 데이터가 이미 있는지 확인
@@ -118,27 +119,47 @@ def upload_logs(
             UsageLog.first_time_stamp == start_ms
         ).first()
 
+        raw_id = getattr(log_item, 'category_id', -1)
+        cat_name = get_category_name(raw_id)
+        incoming_last_ms = (
+            int(log_item.end_time.timestamp() * 1000)
+            if log_item.end_time
+            else start_ms
+        )
+        incoming_usage_duration = int(log_item.usage_duration or 0)
+        incoming_launch_count = int(log_item.app_launch_count or 0)
+        incoming_max_continuous = int(log_item.max_continuous_duration or 0)
+
         # 3. 중복이 아닌 경우에만 저장
-        if not exists:
-
-            raw_id = getattr(log_item, 'category_id', -1)
-            cat_name = get_category_name(raw_id)
-
+        if exists:
+            exists.app_name = log_item.app_name or exists.app_name
+            exists.usage_duration = max(int(exists.usage_duration or 0), incoming_usage_duration)
+            exists.last_time_stamp = max(int(exists.last_time_stamp or 0), incoming_last_ms)
+            exists.category_id = raw_id
+            exists.category_name = cat_name
+            exists.app_launch_count = max(int(exists.app_launch_count or 0), incoming_launch_count)
+            exists.max_continuous_duration = max(
+                int(exists.max_continuous_duration or 0),
+                incoming_max_continuous,
+            )
+            exists.is_night_mode = bool(exists.is_night_mode or is_night_mode)
+            updated_count += 1
+        else:
             # 일일 언락은 log_data.unlock_count 한 값인데, 동기화마다 "첫 행"에 넣으면 행마다 33이 쌓여 SUM이 33→66→99로 불어남
             # → 새 행에는 항상 per-item 만 저장, 일일 합은 아래에서 오늘 구간 대표 1행만 갱신
             new_log = UsageLog(
                 user_id=current_user_id,
                 package_name=log_item.package_name,
                 app_name=log_item.app_name,
-                usage_duration=log_item.usage_duration,
+                usage_duration=incoming_usage_duration,
                 first_time_stamp=start_ms,
-                last_time_stamp=int(log_item.end_time.timestamp() * 1000) if log_item.end_time else start_ms,
+                last_time_stamp=incoming_last_ms,
                 unlock_count=log_item.unlock_count,
-                category_id=getattr(log_item, 'category_id', -1),
+                category_id=raw_id,
                 category_name=cat_name,
 
-                app_launch_count=log_item.app_launch_count,
-                max_continuous_duration=log_item.max_continuous_duration,
+                app_launch_count=incoming_launch_count,
+                max_continuous_duration=incoming_max_continuous,
                 is_night_mode=is_night_mode,
             )
             db.add(new_log)
@@ -157,7 +178,7 @@ def upload_logs(
         .order_by(UsageLog.id.asc())
         .first()
     )
-    if anchor is not None:
+    if anchor is not None and (log_data.unlock_count > 0 or added_count > 0 or updated_count > 0):
         anchor.unlock_count = log_data.unlock_count
         others = (
             db.query(UsageLog)
@@ -173,7 +194,7 @@ def upload_logs(
             row.unlock_count = 0
 
     db.commit()
-    return {"message": f"기록 저장 성공"}
+    return {"message": "기록 저장 성공", "added": added_count, "updated": updated_count}
 
 @router.post("/snapshots/v3", response_model=DailySnapshotResponse)
 def create_daily_snapshot_v3(
