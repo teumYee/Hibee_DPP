@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.runtime_flags import DEV_RELAXED_MODE
 from app.models.calendar import CheckIn, PatternCandidatesDaily, PatternCandidatesLog
 from app.models.reports import DailyReports, ReportDraft, ReportEvidenceTrace, ReportReviewLog, WeeklyReports
 from app.models.usage_log import Daily_SnapShots
@@ -35,6 +36,8 @@ from app.utils.checkin_policy import (
     DEFAULT_CHECKIN_TIME,
     DEFAULT_CHECKIN_WINDOW_MINUTES,
     DEFAULT_DAY_ROLLOVER_TIME,
+    current_logical_date,
+    ensure_checkin_open,
 )
 from app.utils.pattern_candidates import normalize_pattern_candidates as _normalize_pipeline_candidates
 
@@ -180,23 +183,31 @@ async def generate_pattern_candidates(
 ):
     current_user_id = current_user.id
     user_config = db.query(User_Configs).filter(User_Configs.user_id == current_user_id).first()
+    allow_force_regenerate = DEV_RELAXED_MODE and payload.force_regenerate
 
     snapshot = _get_canonical_snapshot(db, current_user_id, payload.date)
     if not snapshot:
         raise HTTPException(status_code=404, detail="스냅샷이 먼저 업로드되어야 합니다.")
-    # 테스트 모드: 체크인 시간창 및 logical_date 일치 제한을 잠시 비활성화한다.
+    if DEV_RELAXED_MODE:
+        today = current_logical_date(user_config)
+    else:
+        today = ensure_checkin_open(user_config)["logical_date"]
+    if payload.date != today:
+        raise HTTPException(status_code=403, detail="오늘 날짜의 체크인 패턴만 생성할 수 있습니다.")
 
     existing = db.query(PatternCandidatesDaily).filter(
         PatternCandidatesDaily.user_id == current_user_id,
         PatternCandidatesDaily.date == payload.date,
     ).first()
 
-    if existing and not payload.force_regenerate:
+    if existing and not allow_force_regenerate:
         return PatternCandidatesResponse(
             date=str(payload.date),
             status="already_exists",
             generated=False,
             candidates=existing.candidates or [],
+            final_verdict=None,
+            issues=[],
         )
 
     pipeline_input = _build_checkin_pipeline_input(snapshot, user_config)
@@ -211,20 +222,13 @@ async def generate_pattern_candidates(
     final_verdict = str(pipeline_result.get("final_verdict") or "FAIL").upper()
     judge_result = pipeline_result.get("judge_result") or {}
     deterministic_result = pipeline_result.get("deterministic_result") or {}
-
-    if final_verdict != "PASS":
-        failure_reasons = []
-        if isinstance(deterministic_result.get("errors"), list):
-            failure_reasons.extend(str(item) for item in deterministic_result["errors"])
-        if isinstance(judge_result.get("reasons"), list):
-            failure_reasons.extend(str(item) for item in judge_result["reasons"])
-        if pipeline_result.get("error"):
-            failure_reasons.append(str(pipeline_result["error"]))
-
-        detail = "패턴 후보 생성 파이프라인 검수를 통과하지 못했습니다."
-        if failure_reasons:
-            detail = f"{detail} {' | '.join(failure_reasons[:3])}"
-        raise HTTPException(status_code=502, detail=detail)
+    failure_reasons: List[str] = []
+    if isinstance(deterministic_result.get("errors"), list):
+        failure_reasons.extend(str(item) for item in deterministic_result["errors"])
+    if isinstance(judge_result.get("reasons"), list):
+        failure_reasons.extend(str(item) for item in judge_result["reasons"])
+    if pipeline_result.get("error"):
+        failure_reasons.append(str(pipeline_result["error"]))
 
     if existing:
         existing.candidates = candidates
@@ -249,9 +253,11 @@ async def generate_pattern_candidates(
     db.refresh(record)
     return PatternCandidatesResponse(
         date=str(payload.date),
-        status="generated",
+        status="generated" if final_verdict == "PASS" else "generated_with_issues",
         generated=True,
         candidates=record.candidates or [],
+        final_verdict=final_verdict,
+        issues=failure_reasons,
     )
 
 
@@ -275,6 +281,8 @@ def get_pattern_candidates(
         status="done",
         generated=False,
         candidates=record.candidates or [],
+        final_verdict=None,
+        issues=[],
     )
 
 
@@ -366,6 +374,7 @@ def generate_daily_report(
     current_user: Users = Depends(get_current_user),
 ):
     current_user_id = current_user.id
+    allow_force_regenerate = DEV_RELAXED_MODE and payload.force_regenerate
 
     snapshot = _get_canonical_snapshot(db, current_user_id, payload.date)
     if not snapshot:
@@ -384,7 +393,7 @@ def generate_daily_report(
         DailyReports.user_id == current_user_id,
         DailyReports.date == datetime.combine(payload.date, datetime.min.time()),
     ).first()
-    if existing_daily and not payload.force_regenerate:
+    if existing_daily and not allow_force_regenerate:
         response_payload = build_daily_report_response_payload(
             target_date=payload.date,
             snapshot=snapshot,
@@ -425,7 +434,10 @@ def generate_daily_report(
     trace = ReportEvidenceTrace(
         report_draft_id=draft.id,
         search_queries=rag_result["queries"],
-        search_filters=rag_result["filters"],
+        search_filters={
+            **(rag_result.get("filters") or {}),
+            "_debug": rag_result.get("retrieval_debug") or {},
+        },
         must_include_concepts=rag_result["must_include_concepts"],
         retrieved_evidence=rag_result["retrieved_evidence"],
     )
@@ -534,7 +546,15 @@ def get_daily_review(
         issues=review_log.issues if review_log and review_log.issues else [],
         rewrite_brief=review_log.rewrite_brief if review_log else None,
         search_queries=evidence_trace.search_queries if evidence_trace and evidence_trace.search_queries else [],
-        search_filters=evidence_trace.search_filters if evidence_trace and evidence_trace.search_filters else {},
+        search_filters=(
+            {
+                key: value
+                for key, value in evidence_trace.search_filters.items()
+                if key != "_debug"
+            }
+            if evidence_trace and isinstance(evidence_trace.search_filters, dict)
+            else {}
+        ),
         must_include_concepts=(
             evidence_trace.must_include_concepts
             if evidence_trace and evidence_trace.must_include_concepts
@@ -544,6 +564,11 @@ def get_daily_review(
             evidence_trace.retrieved_evidence
             if evidence_trace and evidence_trace.retrieved_evidence
             else []
+        ),
+        retrieval_debug=(
+            evidence_trace.search_filters.get("_debug", {})
+            if evidence_trace and isinstance(evidence_trace.search_filters, dict)
+            else {}
         ),
     )
 
@@ -555,6 +580,7 @@ def generate_weekly_report(
     current_user: Users = Depends(get_current_user),
 ):
     current_user_id = current_user.id
+    allow_force_regenerate = DEV_RELAXED_MODE and payload.force_regenerate
     week_start = normalize_week_start(payload.week_start)
     week_end = week_start + timedelta(days=6)
     next_week_start = week_end + timedelta(days=1)
@@ -581,7 +607,7 @@ def generate_weekly_report(
         DailyReports.date < datetime.combine(next_week_start, datetime.min.time()),
     ).all()
 
-    if existing_weekly and not payload.force_regenerate:
+    if existing_weekly and not allow_force_regenerate:
         report_markdown = render_weekly_report_from_record(existing_weekly)
         response_payload = build_weekly_report_response_payload(
             week_start=week_start,

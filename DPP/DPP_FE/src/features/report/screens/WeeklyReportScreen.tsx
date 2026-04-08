@@ -1,10 +1,17 @@
 import { AppText } from "../../../components/AppText";
+import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
 import { getWeeklyReport } from "../../../services/api/report.api";
+import { formatMinutes } from "../../dashboard/utils/formatMinutes";
+import {
+  HorizontalBarList,
+  MetricGrid,
+  UsageTrendChart,
+} from "../components/ReportVisuals";
 import type { WeeklyReportData } from "../types";
 
 const MAIN = "#2E7FC1";
@@ -22,22 +29,20 @@ function parseDateKey(key: string): Date {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
-/** start_date 기준 헤더: "N월 N주차 리포트", 주차 = Math.ceil(getDate() / 7) */
 function formatHeaderTitle(startDate: string): string {
-  const d = parseDateKey(startDate);
-  const month = d.getMonth() + 1;
-  const weekNum = Math.ceil(d.getDate() / 7);
+  const date = parseDateKey(startDate);
+  const month = date.getMonth() + 1;
+  const weekNum = Math.ceil(date.getDate() / 7);
   return `${month}월 ${weekNum}주차 리포트`;
 }
 
-/** 카드 1 부제: "N월 N일 - N일" */
 function formatWeekRangeSubtitle(startDate: string, endDate: string): string {
-  const a = parseDateKey(startDate);
-  const b = parseDateKey(endDate);
-  if (a.getMonth() === b.getMonth()) {
-    return `${a.getMonth() + 1}월 ${a.getDate()}일 - ${b.getDate()}일`;
+  const start = parseDateKey(startDate);
+  const end = parseDateKey(endDate);
+  if (start.getMonth() === end.getMonth()) {
+    return `${start.getMonth() + 1}월 ${start.getDate()}일 - ${end.getDate()}일`;
   }
-  return `${a.getMonth() + 1}월 ${a.getDate()}일 - ${b.getMonth() + 1}월 ${b.getDate()}일`;
+  return `${start.getMonth() + 1}월 ${start.getDate()}일 - ${end.getMonth() + 1}월 ${end.getDate()}일`;
 }
 
 export function WeeklyReportScreen({ navigation, route }: Props) {
@@ -61,7 +66,9 @@ export function WeeklyReportScreen({ navigation, route }: Props) {
           setError(e instanceof Error ? e.message : "주간 리포트를 불러오지 못했어요.");
         }
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+        }
       }
     })();
     return () => {
@@ -84,14 +91,15 @@ export function WeeklyReportScreen({ navigation, route }: Props) {
     }
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={MAIN} />
-        </View>
+        <View style={styles.loadingWrap} />
+        <LoadingOverlay
+          visible
+          title="주간 리포트를 준비하고 있어요"
+          message="이번 주 흐름과 주요 지표를 정리하는 중이에요."
+        />
       </SafeAreaView>
     );
   }
-
-  const headerTitle = formatHeaderTitle(data.start_date);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -106,7 +114,7 @@ export function WeeklyReportScreen({ navigation, route }: Props) {
           <AppText style={styles.backArrow}>←</AppText>
         </Pressable>
         <AppText style={styles.headerTitle} numberOfLines={1}>
-          {headerTitle}
+          {formatHeaderTitle(data.start_date)}
         </AppText>
         <View style={styles.backBtn} />
       </View>
@@ -116,7 +124,6 @@ export function WeeklyReportScreen({ navigation, route }: Props) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 카드 1 — 이번 주 타이틀 */}
         <View style={[styles.card, styles.cardTitleBlock]}>
           <AppText style={styles.card1Subtitle}>
             {formatWeekRangeSubtitle(data.start_date, data.end_date)}
@@ -129,7 +136,6 @@ export function WeeklyReportScreen({ navigation, route }: Props) {
           ) : null}
         </View>
 
-        {/* 카드 2 — 수치 요약 */}
         <View style={[styles.card, styles.cardMargin, styles.statsGrid]}>
           <View style={styles.statCol}>
             <AppText style={styles.statLabel}>평균 도파민 밸런스</AppText>
@@ -142,13 +148,72 @@ export function WeeklyReportScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* 카드 3 — 주요 활동 시간 */}
         <View style={[styles.card, styles.cardMargin]}>
-          <AppText style={styles.card3Label}>주요 활동 시간</AppText>
-          <AppText style={styles.card3Value}>{data.main_activity_time}</AppText>
+          <AppText style={styles.cardTitle}>이번 주 핵심 수치</AppText>
+          <MetricGrid items={data.metrics} />
         </View>
 
-        {/* 카드 4 — 주세 분석 */}
+        <View style={[styles.card, styles.cardMargin]}>
+          <AppText style={styles.cardTitle}>7일 사용 추이</AppText>
+          <UsageTrendChart points={data.daily_usage} />
+          <AppText style={styles.chartCaption}>
+            {data.daily_usage.length > 0
+              ? `가장 많이 사용한 날은 ${formatMinutes(
+                  Math.max(...data.daily_usage.map((item) => item.minutes)),
+                )} 수준이었어요.`
+              : "이번 주 사용 추이 데이터가 없어요."}
+          </AppText>
+        </View>
+
+        <View style={[styles.card, styles.cardMargin]}>
+          <AppText style={styles.cardTitle}>이번 주 패턴</AppText>
+          <AppText style={styles.card3Label}>주요 활동 시간</AppText>
+          <AppText style={styles.card3Value}>{data.main_activity_time}</AppText>
+          <View style={styles.divider} />
+          <HorizontalBarList
+            items={data.time_of_day_usage.map((item) => ({
+              key: item.name,
+              title: item.name,
+              amount: item.minutes,
+              color: item.color,
+            }))}
+            emptyText="시간대 분포 데이터가 없어요."
+          />
+        </View>
+
+        <View style={[styles.card, styles.cardMargin]}>
+          <AppText style={styles.cardTitle}>가장 많이 쓴 앱</AppText>
+          <HorizontalBarList
+            items={data.top_apps.map((item, index) => ({
+              key: `${item.name}-${index}`,
+              title: item.name,
+              amount: item.minutes,
+              color: ["#2E7FC1", "#FFB347", "#8A6FE8", "#1D9E75", "#E85D24"][index % 5],
+              meta: item.category
+                ? `${item.category} · 실행 ${item.launch_count}회`
+                : `실행 ${item.launch_count}회`,
+            }))}
+            emptyText="앱 사용 데이터가 아직 부족해요."
+          />
+        </View>
+
+        <View style={[styles.card, styles.cardMargin]}>
+          <AppText style={styles.cardTitle}>가장 많이 쓴 카테고리</AppText>
+          <HorizontalBarList
+            items={data.category_usage.map((item) => ({
+              key: item.name,
+              title: item.name,
+              amount: item.minutes,
+              color: item.color,
+              meta:
+                item.app_count || item.launch_count
+                  ? `앱 ${item.app_count || 0}개 · 실행 ${item.launch_count || 0}회`
+                  : undefined,
+            }))}
+            emptyText="카테고리 사용 데이터가 없어요."
+          />
+        </View>
+
         <View style={[styles.card, styles.cardMargin]}>
           <AppText style={styles.sectionTitle}>주세 분석</AppText>
           <View style={styles.aiSubcard}>
@@ -170,38 +235,29 @@ export function WeeklyReportScreen({ navigation, route }: Props) {
           <AppText style={styles.analysisComment}>{data.improve_area_comment}</AppText>
         </View>
 
-        {/* 카드 5 — 돌고래의 관찰 */}
         <View style={[styles.card, styles.cardMargin, styles.cardDolphin]}>
           <View style={styles.dolphinTitleRow}>
             <AppText style={styles.dolphinEmoji}>🐬</AppText>
             <AppText style={styles.dolphinTitle}>돌고래의 관찰</AppText>
           </View>
-          {data.dolphin_observations.map((line, i) => (
-            <AppText
-              key={`d-${i}`}
-              style={[styles.bulletLine, i > 0 && styles.bulletGap]}
-            >
+          {data.dolphin_observations.map((line, index) => (
+            <AppText key={`d-${index}`} style={[styles.bulletLine, index > 0 && styles.bulletGap]}>
               <AppText style={styles.bulletDot}>• </AppText>
               <AppText style={styles.bulletText}>{line}</AppText>
             </AppText>
           ))}
         </View>
 
-        {/* 카드 6 — 다음 주를 위한 제안 */}
         <View style={[styles.card, styles.cardMargin]}>
           <AppText style={styles.sectionTitle}>다음 주를 위한 제안</AppText>
-          {data.next_week_suggestions.map((line, i) => (
-            <AppText
-              key={`s-${i}`}
-              style={[styles.bulletLine, i > 0 && styles.bulletGap]}
-            >
+          {data.next_week_suggestions.map((line, index) => (
+            <AppText key={`s-${index}`} style={[styles.bulletLine, index > 0 && styles.bulletGap]}>
               <AppText style={styles.bulletDot}>• </AppText>
               <AppText style={styles.bulletText}>{line}</AppText>
             </AppText>
           ))}
         </View>
 
-        {/* 카드 7 — AI 상세 코멘트 */}
         <View style={[styles.card, styles.cardMargin, styles.cardAiFooter]}>
           <AppText style={styles.sectionTitle}>이번 주 돌아보기</AppText>
           <AppText style={styles.aiCommentBody}>{data.ai_comment}</AppText>
@@ -329,6 +385,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#888888",
   },
+  cardTitle: {
+    fontSize: 16,
+    color: TITLE,
+    marginBottom: 12,
+  },
   card3Label: {
     fontSize: 13,
     color: "#666666",
@@ -337,6 +398,12 @@ const styles = StyleSheet.create({
   card3Value: {
     fontSize: 18,
     color: MAIN,
+  },
+  chartCaption: {
+    marginTop: 8,
+    fontSize: 13,
+    color: "#666666",
+    textAlign: "center",
   },
   sectionTitle: {
     fontSize: 16,

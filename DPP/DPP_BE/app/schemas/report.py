@@ -34,6 +34,8 @@ class PatternCandidatesResponse(BaseModel):
     status: str
     generated: bool
     candidates: List[PatternCandidate]
+    final_verdict: Optional[str] = None
+    issues: List[str] = Field(default_factory=list)
 
 
 class CheckinSaveRequest(BaseModel):
@@ -60,12 +62,31 @@ class DailyReportGenerateRequest(BaseModel):
     force_regenerate: bool = False
 
 
+class TopAppChartItem(BaseModel):
+    package_name: str = ""
+    app_name: str = ""
+    usage_sec: int = 0
+    launch_count: int = 0
+    max_continuous_sec: int = 0
+    category: Optional[str] = None
+
+
+class CategoryUsageChartItem(BaseModel):
+    category: str = ""
+    usage_sec: int = 0
+    app_count: int = 0
+    launch_count: int = 0
+
+
 class DailyChartData(BaseModel):
     total_usage_check: int = 0
     unlock_count: int = 0
     max_continuous_sec: int = 0
     app_launch_count: int = 0
     time_of_day_buckets: Dict[str, int] = Field(default_factory=dict)
+    timeline_buckets: Dict[str, int] = Field(default_factory=dict)
+    top_apps: List[TopAppChartItem] = Field(default_factory=list)
+    per_category_usage: List[CategoryUsageChartItem] = Field(default_factory=list)
 
 
 class DailyReportResponse(BaseModel):
@@ -96,6 +117,8 @@ class WeeklyChartData(BaseModel):
     max_continuous_sec: int = 0
     time_of_day_buckets: Dict[str, int] = Field(default_factory=dict)
     daily_usage: Dict[str, int] = Field(default_factory=dict)
+    top_apps: List[TopAppChartItem] = Field(default_factory=list)
+    per_category_usage: List[CategoryUsageChartItem] = Field(default_factory=list)
 
 
 class WeeklyReportResponse(BaseModel):
@@ -123,3 +146,4 @@ class DailyReviewResponse(BaseModel):
     search_filters: Dict[str, Any] = Field(default_factory=dict)
     must_include_concepts: List[str] = Field(default_factory=list)
     retrieved_evidence: List[Dict[str, Any]] = Field(default_factory=list)
+    retrieval_debug: Dict[str, Any] = Field(default_factory=dict)

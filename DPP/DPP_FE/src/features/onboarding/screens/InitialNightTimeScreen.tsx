@@ -26,10 +26,10 @@ import {
 } from "../../../services/api/main.api";
 import {
   DEFAULT_CHECKIN_WINDOW_MINUTES,
-  DEFAULT_DAY_ROLLOVER_TIME,
   deriveCheckinTimeFromNightStart,
   formatHhMm,
 } from "../../checkin/utils/checkinPolicy";
+import { syncNativeUsagePolicy } from "../../usage/services/dailyUsage";
 import { type OnboardingDraft, useAuthStore } from "../../../store/auth.store";
 import { OnboardingStepLayout } from "../components/OnboardingStepLayout";
 
@@ -110,23 +110,26 @@ type HourOption = {
 };
 
 const CHECKIN_TIME_OPTIONS: HourOption[] = [
-  { hour: 18, label: "18:00" },
   { hour: 19, label: "19:00" },
   { hour: 20, label: "20:00" },
   { hour: 21, label: "21:00" },
   { hour: 22, label: "22:00" },
   { hour: 23, label: "23:00" },
-];
-
-const ROLLOVER_OPTIONS: HourOption[] = [
+  { hour: 0, label: "00:00" },
+  { hour: 1, label: "01:00" },
   { hour: 2, label: "02:00" },
-  { hour: 3, label: "03:00" },
-  { hour: 4, label: "04:00" },
-  { hour: 5, label: "05:00" },
-  { hour: 6, label: "06:00" },
 ];
 
-const WINDOW_OPTIONS = [60, 90, 120, 150];
+const WINDOW_OPTIONS = [60, 120, 180];
+
+function describeCheckinWindow(checkinHour: number, windowMinutes: number): string {
+  const start = checkinHour * 60;
+  const end = (start + windowMinutes) % 1440;
+  return `${formatHhMm(Math.floor(start / 60), start % 60)} - ${formatHhMm(
+    Math.floor(end / 60),
+    end % 60,
+  )}`;
+}
 
 export function InitialNightTimeScreen({ navigation, route }: Props) {
   const isEdit = route.params?.isEditMode === true;
@@ -143,9 +146,6 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
       draft.checkin_time || deriveCheckinTimeFromNightStart(draft.night_mode_start),
       21,
     ),
-  );
-  const [rolloverHour, setRolloverHour] = useState(() =>
-    parseHour(draft.day_rollover_time || DEFAULT_DAY_ROLLOVER_TIME, 4),
   );
   const [windowMinutes, setWindowMinutes] = useState(() =>
     typeof draft.checkin_window_minutes === "number" && draft.checkin_window_minutes > 0
@@ -234,14 +234,10 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
     () => `${formatHour(startHour)} - ${formatHour(endHour)}`,
     [startHour, endHour],
   );
-  const checkinWindowLabel = useMemo(() => {
-    const start = (checkinHour * 60 - windowMinutes + 1440) % 1440;
-    const end = (checkinHour * 60 + windowMinutes) % 1440;
-    return `${formatHhMm(Math.floor(start / 60), start % 60)} - ${formatHhMm(
-      Math.floor(end / 60),
-      end % 60,
-    )}`;
-  }, [checkinHour, windowMinutes]);
+  const checkinWindowLabel = useMemo(
+    () => describeCheckinWindow(checkinHour, windowMinutes),
+    [checkinHour, windowMinutes],
+  );
 
   const onNext = useCallback(async () => {
     setLoading(true);
@@ -249,7 +245,7 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
       const nightModeStart = formatHour(startHour);
       const nightModeEnd = formatHour(endHour);
       const checkinTime = formatHour(checkinHour);
-      const dayRolloverTime = formatHour(rolloverHour);
+      const dayRolloverTime = checkinTime;
       await setOnboardingData({
         night_mode_start: nightModeStart,
         night_mode_end: nightModeEnd,
@@ -257,6 +253,7 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
         checkin_window_minutes: windowMinutes,
         day_rollover_time: dayRolloverTime,
       });
+      await syncNativeUsagePolicy();
       if (isEdit) {
         const uid = useAuthStore.getState().userId;
         if (uid == null) {
@@ -283,7 +280,6 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
     endHour,
     isEdit,
     navigation,
-    rolloverHour,
     setOnboardingData,
     startHour,
     windowMinutes,
@@ -295,12 +291,18 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
     ).navigate("InitialStruggles");
   }, [navigation]);
 
+  const onPressNext = useCallback(() => {
+    onNext().catch(() => {
+      // onNext 내부에서 사용자 안내를 마친다.
+    });
+  }, [onNext]);
+
   return (
     <OnboardingStepLayout
       step={3}
       hideProgress={isEdit}
-      title="심야와 체크인 기준을 설정해주세요"
-      subtitle="심야 시간, 체크인 시각, 하루 경계 시각을 함께 정해요"
+      title="심야와 하루 마감 시간을 설정해주세요"
+      subtitle="하루를 언제 돌아볼지 정하면, 그 시각에 하루가 마감되고 체크인이 열려요"
       onBack={() => navigation.goBack()}
       headerRight={
         !isEdit ? (
@@ -316,7 +318,7 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
             loading && styles.primaryBtnDisabled,
             pressed && !loading && styles.primaryBtnPressed,
           ]}
-          onPress={() => void onNext()}
+          onPress={onPressNext}
           disabled={loading}
           accessibilityRole="button"
           accessibilityLabel={isEdit ? "저장하기" : "완료하기"}
@@ -377,10 +379,9 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.sectionCard}>
-          <AppText style={styles.sectionTitle}>체크인 시간</AppText>
+          <AppText style={styles.sectionTitle}>체크인 오픈 시간 설정</AppText>
           <AppText style={styles.sectionHint}>
-            체크인이 열리는 중심 시각이에요. 현재 허용 구간은 {checkinWindowLabel}
-            예요.
+            하루가 마감되고, 체크인이 열리는 시각을 설정할 수 있어요.
           </AppText>
           <View style={styles.optionWrap}>
             {CHECKIN_TIME_OPTIONS.map((option) => {
@@ -405,7 +406,7 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
         <View style={styles.sectionCard}>
           <AppText style={styles.sectionTitle}>체크인 허용 시간창</AppText>
           <AppText style={styles.sectionHint}>
-            선택한 체크인 시각 전후로 얼마나 여유를 둘지 정해요.
+            하루를 마감하고, 몇 시간동안 체크인을 허용할지 정할 수 있어요.
           </AppText>
           <View style={styles.optionWrap}>
             {WINDOW_OPTIONS.map((option) => {
@@ -419,7 +420,7 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
                   accessibilityState={{ selected }}
                 >
                   <AppText style={[styles.optionChipText, selected && styles.optionChipTextOn]}>
-                    ±{option}분
+                    {Math.round(option / 60)}시간
                   </AppText>
                 </Pressable>
               );
@@ -428,28 +429,11 @@ export function InitialNightTimeScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.sectionCard}>
-          <AppText style={styles.sectionTitle}>데일리 롤오버 시간</AppText>
+          <AppText style={styles.sectionTitle}>! 하루 마감 기준 !</AppText>
           <AppText style={styles.sectionHint}>
-            이 시각 전까지는 전날 기록으로 보고, 이후부터 새 하루로 계산해요.
+            하루가 마감되면 체크인이 열리는 시각이 되어요. 지금 설정이면 매일{" "}
+            {formatHour(checkinHour)}에 하루가 마감되고, {checkinWindowLabel} 동안 체크인을 통해 하루 회고를 진행할 수 있어요.
           </AppText>
-          <View style={styles.optionWrap}>
-            {ROLLOVER_OPTIONS.map((option) => {
-              const selected = option.hour === rolloverHour;
-              return (
-                <Pressable
-                  key={option.hour}
-                  style={[styles.optionChip, selected && styles.optionChipOn]}
-                  onPress={() => setRolloverHour(option.hour)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                >
-                  <AppText style={[styles.optionChipText, selected && styles.optionChipTextOn]}>
-                    {option.label}
-                  </AppText>
-                </Pressable>
-              );
-            })}
-          </View>
         </View>
       </ScrollView>
     </OnboardingStepLayout>

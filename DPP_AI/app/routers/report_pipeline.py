@@ -3,15 +3,16 @@
 """
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.core.database import get_db
 from app.services.report_pipeline import run_report_pipeline
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 @router.post("/report-pipeline")
-def run_report_pipeline_endpoint(body: Dict[str, Any]):
+def run_report_pipeline_endpoint(body: Dict[str, Any], db_session: Any = Depends(get_db)):
     """
     리포트 파이프라인 실행:
     1. report_writer (Claude Sonnet) → 리포트 초안
@@ -26,7 +27,7 @@ def run_report_pipeline_endpoint(body: Dict[str, Any]):
         result = run_report_pipeline(
             body,
             log_to_db=True,
-            db_session=None,
+            db_session=db_session,
         )
         return result
     except Exception as e:

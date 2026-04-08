@@ -7,7 +7,7 @@ import type { MainStackParamList } from "../../../navigation/types";
 import { submitCheckin } from "../../../services/api/checkin.api";
 import { ensureDailyReportByDate } from "../../../services/api/report.api";
 import type { KPTChoice } from "../types";
-import { getLogicalDate } from "../utils/checkinPolicy";
+import { getLatestCompletedLogicalDate } from "../utils/checkinPolicy";
 
 const BG = "#0D2E5C";
 const KEEP = "#2E7FC1";
@@ -48,7 +48,7 @@ export function CheckinCompleteScreen({ navigation, route }: Props) {
         kpt_tags: selected.map((s) => s.kpt),
       });
 
-      const today = getLogicalDate();
+      const today = getLatestCompletedLogicalDate();
 
       try {
         await ensureDailyReportByDate(today);

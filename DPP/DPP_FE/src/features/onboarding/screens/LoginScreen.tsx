@@ -1,8 +1,8 @@
 // Google 로그인
 import { AppText } from "../../../components/AppText";
+import { LoadingOverlay } from "../../../components/LoadingOverlay";
 import React, { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   AppState,
   InteractionManager,
@@ -19,10 +19,15 @@ import {
   type SignInResponse,
 } from "@react-native-google-signin/google-signin";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { OnboardingStackParamList } from "../../../navigation/types";
+import type {
+  OnboardingStackParamList,
+  RootStackParamList,
+} from "../../../navigation/types";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useAuthStore } from "../../../store/auth.store";
 import { ENDPOINTS } from "../../../services/api/endpoints";
 import { post } from "../../../services/api/client";
+import { getUserBootstrap } from "../../../services/api/main.api";
 
 type Props = NativeStackScreenProps<OnboardingStackParamList, "Login">;
 
@@ -92,6 +97,8 @@ type GoogleLoginResponse = {
 export function LoginScreen({ navigation }: Props) {
   const setToken = useAuthStore((s) => s.setToken);
   const setUserId = useAuthStore((s) => s.setUserId);
+  const setOnboardingDone = useAuthStore((s) => s.setOnboardingDone);
+  const replaceOnboardingData = useAuthStore((s) => s.replaceOnboardingData);
   const [loading, setLoading] = useState(false);
 
   const onGooglePress = useCallback(async () => {
@@ -121,6 +128,27 @@ export function LoginScreen({ navigation }: Props) {
       );
       await setToken(loginResult.access_token ?? idToken);
       await setUserId(loginResult.id);
+      const bootstrap = await getUserBootstrap();
+      await setOnboardingDone(bootstrap.onboarding_completed);
+      await replaceOnboardingData({
+        goals: bootstrap.onboarding_data.goals,
+        active_time: bootstrap.onboarding_data.active_times[0] ?? "",
+        night_mode_start: bootstrap.onboarding_data.night_mode_start,
+        night_mode_end: bootstrap.onboarding_data.night_mode_end,
+        checkin_time: bootstrap.onboarding_data.checkin_time,
+        checkin_window_minutes: bootstrap.onboarding_data.checkin_window_minutes,
+        day_rollover_time: bootstrap.onboarding_data.day_rollover_time,
+        struggles: bootstrap.onboarding_data.struggles,
+        focus_categories: bootstrap.onboarding_data.focus_categories,
+        categories: useAuthStore.getState().onboardingData.categories,
+      });
+      if (bootstrap.onboarding_completed) {
+        const parent = navigation.getParent<
+          NativeStackNavigationProp<RootStackParamList>
+        >();
+        parent?.navigate("Main", { screen: "Home" });
+        return;
+      }
       navigation.navigate("Nickname");
     } catch (e: unknown) {
       console.error(e);
@@ -128,7 +156,13 @@ export function LoginScreen({ navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [navigation, setToken, setUserId]);
+  }, [
+    navigation,
+    replaceOnboardingData,
+    setOnboardingDone,
+    setToken,
+    setUserId,
+  ]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -152,17 +186,18 @@ export function LoginScreen({ navigation }: Props) {
           accessibilityRole="button"
           accessibilityLabel="Google로 로그인"
         >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <AppText style={styles.googleBtnText}>Google로 계속하기</AppText>
-          )}
+          <AppText style={styles.googleBtnText}>Google로 계속하기</AppText>
         </Pressable>
 
         <AppText style={styles.legal}>
           로그인하면 서비스 이용 약관 및 개인정보 보호정책에 동의하게 됩니다
         </AppText>
       </View>
+      <LoadingOverlay
+        visible={loading}
+        title="로그인 중이에요"
+        message="계정 인증과 사용자 정보를 확인하는 중이에요."
+      />
     </SafeAreaView>
   );
 }

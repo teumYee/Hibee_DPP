@@ -1,24 +1,25 @@
 import { AppText } from "../../../components/AppText";
-import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Dimensions, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { LoadingOverlay } from "../../../components/LoadingOverlay";
+import React, { useEffect, useState } from "react";
+import { Dimensions, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, {
-  Line,
-  Polyline,
-  Rect,
-  Text as SvgText,
-} from "react-native-svg";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../../navigation/types";
 import { getDailyReportByDate } from "../../../services/api/report.api";
+import { formatMinutes } from "../../dashboard/utils/formatMinutes";
+import {
+  DonutCategoryChart,
+  HorizontalBarList,
+  MetricGrid,
+  TimelineBarChart,
+  TimeFlowChart,
+} from "../components/ReportVisuals";
 import type { DailyReportData } from "../types";
-import { APP_FONT_FAMILY } from "../../../theme/typography";
 
 const MAIN = "#2E7FC1";
 const BG = "#F5F7FA";
 const CARD_GAP = 12;
 const TITLE = "#1A1A2E";
-
 const WEEKDAYS_KO = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
 type Props = NativeStackScreenProps<MainStackParamList, "DailyReport">;
@@ -29,105 +30,16 @@ function parseDateKey(key: string): Date {
 }
 
 function formatKoreanLongDate(dateKey: string): string {
-  const d = parseDateKey(dateKey);
-  const dow = WEEKDAYS_KO[d.getDay()];
-  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${dow}요일`;
-}
-
-const PAD_L = 40;
-const PAD_R = 12;
-const PAD_T = 16;
-const PAD_B = 40;
-
-type TimeFlowChartProps = {
-  buckets: { hour: number; minutes: number }[];
-  width: number;
-  height: number;
-};
-
-function TimeFlowChart({ buckets, width, height }: TimeFlowChartProps) {
-  const innerW = width - PAD_L - PAD_R;
-  const innerH = height - PAD_T - PAD_B;
-  const maxM = Math.max(
-    1,
-    ...buckets.map((b) => b.minutes),
-  );
-  const sorted = [...buckets].sort((a, b) => a.hour - b.hour);
-
-  const hourToX = (h: number) => PAD_L + (h / 24) * innerW;
-  const band = (h0: number, h1: number, fill: string) => {
-    const x = hourToX(h0);
-    const w = ((h1 - h0) / 24) * innerW;
-    return (
-      <Rect
-        key={`${h0}-${h1}-${fill}`}
-        x={x}
-        y={PAD_T}
-        width={w}
-        height={innerH}
-        fill={fill}
-        opacity={0.45}
-      />
-    );
-  };
-
-  const points = sorted
-    .map((b) => {
-      const cx = hourToX(b.hour + 0.5);
-      const cy = PAD_T + innerH - (b.minutes / maxM) * innerH;
-      return `${cx},${cy}`;
-    })
-    .join(" ");
-
-  const baselineY = PAD_T + innerH;
-
-  return (
-    <Svg width={width} height={height}>
-      {band(0, 6, "#E8E8F0")}
-      {band(6, 12, "#FFF8E7")}
-      {band(12, 18, "#E8F4FC")}
-      {band(18, 22, "#FFE8DC")}
-      {band(22, 24, "#E8E8F0")}
-      <Line
-        x1={PAD_L}
-        y1={baselineY}
-        x2={PAD_L + innerW}
-        y2={baselineY}
-        stroke="#CCCCCC"
-        strokeWidth={1}
-      />
-      {points.length > 0 ? (
-        <Polyline
-          points={points}
-          fill="none"
-          stroke={MAIN}
-          strokeWidth={2.5}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      ) : null}
-      {[0, 6, 12, 18, 23].map((h) => (
-        <SvgText
-          key={`lx-${h}`}
-          x={hourToX(h)}
-          y={height - 8}
-          fill="#888888"
-          fontFamily={APP_FONT_FAMILY}
-          fontSize={10}
-          textAnchor="middle"
-        >
-          {`${h}시`}
-        </SvgText>
-      ))}
-    </Svg>
-  );
+  const date = parseDateKey(dateKey);
+  const weekday = WEEKDAYS_KO[date.getDay()];
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일 ${weekday}요일`;
 }
 
 export function DailyReportScreen({ navigation, route }: Props) {
   const [data, setData] = useState<DailyReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const chartW = Dimensions.get("window").width - 32 * 2;
+  const chartWidth = Dimensions.get("window").width - 64;
 
   useEffect(() => {
     let alive = true;
@@ -136,24 +48,23 @@ export function DailyReportScreen({ navigation, route }: Props) {
       setError(null);
       try {
         const next = await getDailyReportByDate(route.params.date);
-        if (alive) setData(next);
+        if (alive) {
+          setData(next);
+        }
       } catch (e) {
         if (alive) {
           setError(e instanceof Error ? e.message : "리포트를 불러오지 못했어요.");
         }
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+        }
       }
     })();
     return () => {
       alive = false;
     };
   }, [route.params.date]);
-
-  const maxCat = useMemo(() => {
-    if (!data?.category_usage.length) return 1;
-    return Math.max(...data.category_usage.map((c) => c.minutes), 1);
-  }, [data]);
 
   if (loading || !data) {
     if (!loading && error) {
@@ -170,9 +81,12 @@ export function DailyReportScreen({ navigation, route }: Props) {
     }
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={MAIN} />
-        </View>
+        <View style={styles.loadingWrap} />
+        <LoadingOverlay
+          visible
+          title="리포트를 불러오고 있어요"
+          message="오늘의 시각 지표와 회고 내용을 준비하는 중이에요."
+        />
       </SafeAreaView>
     );
   }
@@ -180,11 +94,7 @@ export function DailyReportScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <View style={styles.header}>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          hitSlop={12}
-          style={styles.backWrap}
-        >
+        <Pressable onPress={() => navigation.goBack()} hitSlop={12} style={styles.backWrap}>
           <AppText style={styles.backText}>← 목록으로</AppText>
         </Pressable>
         <AppText style={styles.headerTitle}>하루의 기록</AppText>
@@ -200,53 +110,77 @@ export function DailyReportScreen({ navigation, route }: Props) {
         <View style={[styles.card, styles.cardHighlight]}>
           <AppText style={styles.moon}>🌙</AppText>
           <AppText style={styles.aiSummary}>{data.ai_summary}</AppText>
-          <AppText style={styles.aiSub}>
-            내일도 조금 편히 헤엄칠 준비를 해볼까요?
-          </AppText>
+          <AppText style={styles.aiSub}>완료된 하루를 기준으로 정리한 리포트예요.</AppText>
+        </View>
+
+        <View style={[styles.card, styles.cardMargin]}>
+          <AppText style={styles.cardTitle}>오늘의 핵심 수치</AppText>
+          <MetricGrid items={data.metrics} />
         </View>
 
         <View style={[styles.card, styles.cardMargin]}>
           <AppText style={styles.cardTitle}>시간의 흐름</AppText>
-          <View style={styles.legendRow}>
-            <LegendDot color="#FFF8E7" label="아침" border />
-            <LegendDot color="#E8F4FC" label="낮" border />
-            <LegendDot color="#FFE8DC" label="저녁" border />
-            <LegendDot color="#E8E8F0" label="밤" border />
-          </View>
-          <TimeFlowChart
-            buckets={data.time_buckets}
-            width={chartW}
-            height={200}
-          />
+          <TimeFlowChart buckets={data.time_buckets} width={chartWidth} height={200} />
           <AppText style={styles.chartCaption}>하루 동안의 기기 사용 흐름</AppText>
         </View>
 
         <View style={[styles.card, styles.cardMargin]}>
           <AppText style={styles.cardTitle}>시간대별 사용 비중</AppText>
-          {data.category_usage.map((c) => (
-            <View key={c.name} style={styles.catBlock}>
-              <View style={styles.catRow}>
-                <View
-                  style={[styles.catIconDot, { backgroundColor: c.color }]}
-                />
-                <View style={styles.catMeta}>
-                  <AppText style={styles.catName}>{c.name}</AppText>
-                  <AppText style={styles.catMin}>{c.minutes}분</AppText>
-                </View>
-              </View>
-              <View style={styles.barTrack}>
-                <View
-                  style={[
-                    styles.barFill,
-                    {
-                      width: `${Math.round((c.minutes / maxCat) * 100)}%`,
-                      backgroundColor: c.color,
-                    },
-                  ]}
-                />
-              </View>
-            </View>
-          ))}
+          <HorizontalBarList
+            items={data.time_of_day_usage.map((item) => ({
+              key: item.name,
+              title: item.name,
+              amount: item.minutes,
+              color: item.color,
+            }))}
+            emptyText="시간대별 사용 데이터가 없어요."
+          />
+        </View>
+
+        <View style={[styles.card, styles.cardMargin]}>
+          <AppText style={styles.cardTitle}>카테고리 사용</AppText>
+          <DonutCategoryChart items={data.category_usage.slice(0, 5)} />
+          <HorizontalBarList
+            items={data.category_usage.map((item) => ({
+              key: item.name,
+              title: item.name,
+              amount: item.minutes,
+              color: item.color,
+              meta:
+                item.app_count || item.launch_count
+                  ? `앱 ${item.app_count || 0}개 · 실행 ${item.launch_count || 0}회`
+                  : undefined,
+            }))}
+            emptyText="카테고리 사용 데이터가 없어요."
+          />
+        </View>
+
+        <View style={[styles.card, styles.cardMargin]}>
+          <AppText style={styles.cardTitle}>많이 본 앱</AppText>
+          <HorizontalBarList
+            items={data.top_apps.map((item, index) => ({
+              key: `${item.name}-${index}`,
+              title: item.name,
+              amount: item.minutes,
+              color: ["#2E7FC1", "#FFB347", "#8A6FE8", "#1D9E75", "#E85D24"][index % 5],
+              meta: item.category
+                ? `${item.category} · 실행 ${item.launch_count}회`
+                : `실행 ${item.launch_count}회`,
+            }))}
+            emptyText="앱 사용 데이터가 아직 부족해요."
+          />
+        </View>
+
+        <View style={[styles.card, styles.cardMargin]}>
+          <AppText style={styles.cardTitle}>세부 타임라인</AppText>
+          <TimelineBarChart items={data.timeline_usage} />
+          <AppText style={styles.chartCaption}>
+            {data.timeline_usage.length > 0
+              ? `가장 긴 구간은 ${formatMinutes(
+                  Math.max(...data.timeline_usage.map((item) => item.minutes)),
+                )}이에요.`
+              : "시간대 구간 데이터가 없어요."}
+          </AppText>
         </View>
 
         <View style={[styles.card, styles.cardMargin]}>
@@ -255,7 +189,7 @@ export function DailyReportScreen({ navigation, route }: Props) {
             <AppText style={styles.kptEmpty}>오늘은 체크인을 패스했어요</AppText>
           ) : (
             data.kpt_items.map((item) => (
-              <View key={item.label} style={styles.kptRow}>
+              <View key={`${item.type}-${item.label}`} style={styles.kptRow}>
                 <View
                   style={[
                     styles.kptPill,
@@ -270,11 +204,7 @@ export function DailyReportScreen({ navigation, route }: Props) {
                       item.type === "try" && styles.kptPillTextDark,
                     ]}
                   >
-                    {item.type === "keep"
-                      ? "✅"
-                      : item.type === "problem"
-                        ? "⚠️"
-                        : "🔄"}
+                    {item.type === "keep" ? "✅" : item.type === "problem" ? "⚠️" : "🔄"}
                   </AppText>
                 </View>
                 <AppText style={styles.kptLabel}>{item.label}</AppText>
@@ -289,29 +219,6 @@ export function DailyReportScreen({ navigation, route }: Props) {
         </View>
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function LegendDot({
-  color,
-  label,
-  border,
-}: {
-  color: string;
-  label: string;
-  border?: boolean;
-}) {
-  return (
-    <View style={styles.legendItem}>
-      <View
-        style={[
-          styles.legendSwatch,
-          { backgroundColor: color },
-          border && styles.legendSwatchBorder,
-        ]}
-      />
-      <AppText style={styles.legendLabel}>{label}</AppText>
-    </View>
   );
 }
 
@@ -415,74 +322,11 @@ const styles = StyleSheet.create({
     color: TITLE,
     marginBottom: 12,
   },
-  legendRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginBottom: 8,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginRight: 12,
-    marginBottom: 6,
-  },
-  legendSwatch: {
-    width: 12,
-    height: 12,
-    borderRadius: 2,
-    marginRight: 4,
-  },
-  legendSwatchBorder: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#CCCCCC",
-  },
-  legendLabel: {
-    fontSize: 11,
-    color: "#666666",
-  },
   chartCaption: {
     marginTop: 8,
     fontSize: 13,
     color: "#666666",
     textAlign: "center",
-  },
-  catBlock: {
-    marginBottom: 12,
-  },
-  catRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  catIconDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 10,
-  },
-  catMeta: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  catName: {
-    fontSize: 15,
-    color: TITLE,
-  },
-  catMin: {
-    fontSize: 14,
-    color: "#666666",
-  },
-  barTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#E8ECEF",
-    overflow: "hidden",
-  },
-  barFill: {
-    height: "100%",
-    borderRadius: 4,
   },
   kptEmpty: {
     fontSize: 14,

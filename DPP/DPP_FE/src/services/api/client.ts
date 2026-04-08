@@ -1,8 +1,8 @@
 // HTTP 클라이언트 — base URL은 이 파일에만 둠 (추후 .env로 교체)
 import { useAuthStore } from "../../store/auth.store";
 
-/** 나중에 react-native-config 등으로 치환 */
-const BASE_URL = "http://10.240.199.208:8000";
+/** 개발 중에는 현재 PC의 로컬 IP를 사용한다. */
+const BASE_URL = "http://10.240.107.4:8000";
 
 export class HttpError extends Error {
   constructor(

@@ -53,6 +53,8 @@ interpretation에서는
 
 7) 패턴 간 의미상 거의 동일한 반복
 
+8) retrieved_evidence가 1개 이상인데 interpretation에 expert 근거 연결이 전혀 드러나지 않음
+
 ━━━━━━━━━━━━━━━━━━━━
 [판정 기준]
 ━━━━━━━━━━━━━━━━━━━━
@@ -85,16 +87,37 @@ DEFAULT_VIOLATIONS = {
     "time_rule_violation": False,
     "missing_evidence": False,
     "duplicates": False,
+    "evidence_ignored": False,
 }
 
 
-def run_llm_judge(pattern_candidates: dict) -> Dict[str, Any]:
+def _interpretations_reference_evidence(
+    pattern_candidates: Dict[str, Any],
+    retrieved_evidence: List[Dict[str, Any]] | None,
+) -> bool:
+    if not retrieved_evidence:
+        return True
+    candidates = pattern_candidates.get("pattern_candidates") or []
+    if not isinstance(candidates, list):
+        return False
+    joined = " ".join(str(item.get("interpretation") or "") for item in candidates if isinstance(item, dict))
+    lowered = joined.lower()
+    return any(cue in lowered for cue in ("전문 자료", "자료에서도", "자기인식", "알려져", "보고돼"))
+
+
+def run_llm_judge(
+    pattern_candidates: dict,
+    *,
+    snapshot: dict | None = None,
+    retrieved_evidence: List[Dict[str, Any]] | None = None,
+) -> Dict[str, Any]:
     """
     체크인 검수자 시스템 프롬프트로 GPT-4o-mini를 호출해 규칙 위반 여부를 판단합니다.
 
     Args:
         pattern_candidates: writer 출력 전체(dict) 또는 pattern_candidates 배열을 담은 dict.
-                            사용자 메시지에는 JSON 문자열로 전달됩니다.
+        snapshot: 체크인 스냅샷 원본(선택)
+        retrieved_evidence: 검색된 근거 목록(선택)
 
     Returns:
         {
@@ -109,7 +132,12 @@ def run_llm_judge(pattern_candidates: dict) -> Dict[str, Any]:
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     model = os.getenv("OPENAI_JUDGE_MODEL", DEFAULT_MODEL)
 
-    user_content = json.dumps(pattern_candidates, ensure_ascii=False)
+    payload = {
+        "pattern_candidates": pattern_candidates,
+        "snapshot": snapshot or {},
+        "retrieved_evidence": retrieved_evidence or [],
+    }
+    user_content = json.dumps(payload, ensure_ascii=False)
 
     try:
         response = client.chat.completions.create(
@@ -172,6 +200,13 @@ def run_llm_judge(pattern_candidates: dict) -> Dict[str, Any]:
             if key not in violations:
                 violations[key] = DEFAULT_VIOLATIONS[key]
         # 여분 키는 제거하지 않고 그대로 둠 (호환용)
+
+    if retrieved_evidence and not _interpretations_reference_evidence(pattern_candidates, retrieved_evidence):
+        reasons.append("retrieved_evidence가 있는데 interpretation에 expert 근거 연결이 드러나지 않습니다.")
+        fix_instructions.append("각 interpretation에 expert 자료와 연결되는 일반 원칙을 한 문장 이상 자연스럽게 반영하세요.")
+        violations["evidence_ignored"] = True
+        if verdict == "PASS":
+            verdict = "RETRY"
 
     return {
         "verdict": verdict,

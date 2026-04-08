@@ -5,12 +5,14 @@ import logging
 import uuid
 from typing import Any, Dict, List, Optional
 
+from .evidence_retrieval import retrieve_report_evidence
 from .report_writer import generate_report
 from .report_judge import run_report_judge
 
 logger = logging.getLogger("dpp_ai")
 
 MAX_ATTEMPTS = 3
+_QA_RESULTS_DISABLED = False
 FALLBACK_TEMPLATE = """# 오늘의 요약
 
 데일리 리포트를 생성하지 못했습니다.
@@ -35,7 +37,8 @@ def _log_to_qa_results(
         status,
         error_message,
     )
-    if db_session is not None:
+    global _QA_RESULTS_DISABLED
+    if db_session is not None and not _QA_RESULTS_DISABLED:
         try:
             from app.models.qa_result import QAResult
             if QAResult is not None:
@@ -50,7 +53,12 @@ def _log_to_qa_results(
                 db_session.add(row)
                 db_session.commit()
         except Exception as e:
-            logger.warning("qa_results insert failed: %s", e)
+            error_text = str(e)
+            if 'relation "qa_results" does not exist' in error_text:
+                _QA_RESULTS_DISABLED = True
+                logger.warning("qa_results table missing; disable DB qa logging")
+            else:
+                logger.warning("qa_results insert failed: %s", e)
             if db_session:
                 db_session.rollback()
 
@@ -94,8 +102,42 @@ def run_report_pipeline(
         selected_patterns = []
     kpt = input_data.get("kpt", {}) if isinstance(input_data, dict) else {}
     retrieved_evidence = input_data.get("retrieved_evidence")
-    if retrieved_evidence is None:
-        retrieved_evidence = []
+    queries = input_data.get("queries")
+    filters = input_data.get("filters")
+    must_include_concepts = input_data.get("must_include_concepts")
+    retrieval_debug = input_data.get("retrieval_debug")
+    should_retrieve = (
+        not isinstance(retrieved_evidence, list)
+        or len(retrieved_evidence) == 0
+        or not isinstance(queries, list)
+        or len(queries) == 0
+    )
+    if should_retrieve:
+        retrieval_result = retrieve_report_evidence(
+            snapshot,
+            selected_patterns,
+            kpt,
+            user_configs,
+            db_session=db_session,
+        )
+        retrieved_evidence = retrieval_result.get("retrieved_evidence", [])
+        queries = retrieval_result.get("queries", [])
+        filters = retrieval_result.get("filters", {})
+        must_include_concepts = retrieval_result.get("must_include_concepts", [])
+        retrieval_debug = retrieval_result.get("retrieval_debug", {})
+    else:
+        queries = queries if isinstance(queries, list) else []
+        filters = filters if isinstance(filters, dict) else {}
+        must_include_concepts = (
+            must_include_concepts if isinstance(must_include_concepts, list) else []
+        )
+        retrieval_debug = retrieval_debug if isinstance(retrieval_debug, dict) else {
+            "retrieval_ran": False,
+            "retrieval_skipped_reason": "caller_provided_retrieval",
+            "query_count": len(queries),
+            "evidence_count": len(retrieved_evidence),
+            "query_stats": [],
+        }
 
     judge_results: List[Dict[str, Any]] = []
     report_markdown = ""
@@ -193,4 +235,9 @@ def run_report_pipeline(
         "attempts": attempt,
         "judge_results": judge_results,
         "used_fallback_template": used_fallback_template,
+        "queries": queries,
+        "filters": filters,
+        "must_include_concepts": must_include_concepts,
+        "retrieved_evidence": retrieved_evidence,
+        "retrieval_debug": retrieval_debug,
     }

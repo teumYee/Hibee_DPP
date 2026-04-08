@@ -2,7 +2,7 @@ import { useAuthStore } from "../../../store/auth.store";
 
 export const DEFAULT_CHECKIN_TIME = "21:00";
 export const DEFAULT_CHECKIN_WINDOW_MINUTES = 120;
-export const DEFAULT_DAY_ROLLOVER_TIME = "04:00";
+export const DEFAULT_DAY_ROLLOVER_TIME = DEFAULT_CHECKIN_TIME;
 
 export type CheckinPolicy = {
   checkinTime: string;
@@ -42,17 +42,24 @@ export function deriveCheckinTimeFromNightStart(nightModeStart: string): string 
   return formatHhMm(Math.floor(totalMinutes / 60), totalMinutes % 60);
 }
 
+export function deriveDayRolloverTimeFromCheckinTime(checkinTime: string): string {
+  const { hour, minute } = parseHhMm(checkinTime, DEFAULT_DAY_ROLLOVER_TIME);
+  return formatHhMm(hour, minute);
+}
+
 export function getStoredCheckinPolicy(): CheckinPolicy {
   const draft = useAuthStore.getState().onboardingData;
+  const checkinTime =
+    draft.checkin_time?.trim() ||
+    deriveCheckinTimeFromNightStart(draft.night_mode_start || DEFAULT_CHECKIN_TIME);
   return {
-    checkinTime:
-      draft.checkin_time?.trim() ||
-      deriveCheckinTimeFromNightStart(draft.night_mode_start || DEFAULT_CHECKIN_TIME),
+    checkinTime,
     checkinWindowMinutes:
       typeof draft.checkin_window_minutes === "number" && draft.checkin_window_minutes > 0
         ? draft.checkin_window_minutes
         : DEFAULT_CHECKIN_WINDOW_MINUTES,
-    dayRolloverTime: draft.day_rollover_time?.trim() || DEFAULT_DAY_ROLLOVER_TIME,
+    dayRolloverTime:
+      draft.day_rollover_time?.trim() || deriveDayRolloverTimeFromCheckinTime(checkinTime),
   };
 }
 
@@ -73,6 +80,13 @@ export function getLogicalDate(now: Date = new Date(), policy = getStoredCheckin
   return formatLocalDate(logical);
 }
 
+export function getLatestCompletedLogicalDate(
+  now: Date = new Date(),
+  policy = getStoredCheckinPolicy(),
+): string {
+  return getLogicalDate(now, policy);
+}
+
 function withTime(base: Date, hhmm: string): Date {
   const { hour, minute } = parseHhMm(hhmm, DEFAULT_CHECKIN_TIME);
   const next = new Date(base);
@@ -84,12 +98,12 @@ export function getCheckinWindowState(now: Date = new Date(), policy = getStored
   const logicalDate = getLogicalDate(now, policy);
   const [year, month, day] = logicalDate.split("-").map(Number);
   const logicalBase = new Date(year, month - 1, day);
-  const center = withTime(logicalBase, policy.checkinTime);
-  const radiusMs = policy.checkinWindowMinutes * 60 * 1000;
-  const windowStart = new Date(center.getTime() - radiusMs);
-  const windowEnd = new Date(center.getTime() + radiusMs);
+  const windowStart = withTime(logicalBase, policy.checkinTime);
+  const windowEnd = new Date(
+    windowStart.getTime() + policy.checkinWindowMinutes * 60 * 1000,
+  );
   return {
-    logicalDate,
+    logicalDate: getLogicalDate(now, policy),
     windowStart,
     windowEnd,
     isOpen: now >= windowStart && now <= windowEnd,
