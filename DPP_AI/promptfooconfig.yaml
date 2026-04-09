@@ -96,10 +96,6 @@ tests:
           const v = (o.verdict || '').toUpperCase();
           return { pass: v === 'FAIL' || v === 'RETRY', score: (v === 'FAIL' || v === 'RETRY') ? 1 : 0, reason: 'verdict ' + v };
 
-outputPath:
-  json: .promptfoo/output.json
-  yaml: .promptfoo/output.yaml
-
 evaluateOptions:
   maxConcurrency: 2
   timeoutMs: 60000
