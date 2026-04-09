@@ -12,6 +12,9 @@ on:
 jobs:
   promptfoo-eval:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
@@ -32,6 +35,7 @@ jobs:
         run: |
           mkdir -p .promptfoo
           npx promptfoo eval \
+            --output .promptfoo/results.json \
             --output .promptfoo/output.json \
             --output .promptfoo/output.yaml \
             --no-cache
