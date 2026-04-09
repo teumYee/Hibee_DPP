@@ -1,0 +1,36 @@
+{
+  "date": "2026-02-03",
+  "timezone": "Asia/Seoul",
+  "dashboard": {
+    "total_usage_sec": 18000,
+    "total_unlocks": 78,
+    "night_usage_sec": 2700,
+    "category_breakdown": [
+      { "category": "SOCIAL", "usage_sec": 5400, "percent": 0.3 },
+      { "category": "VIDEO", "usage_sec": 4500, "percent": 0.25 },
+      { "category": "PRODUCTIVITY", "usage_sec": 3600, "percent": 0.2 },
+      { "category": "EDUCATION", "usage_sec": 2700, "percent": 0.15 },
+      { "category": "COMMUNICATION", "usage_sec": 1800, "percent": 0.1 }
+    ],
+    "time_buckets": [
+      { "bucket": "morning", "usage_sec": 3600 },
+      { "bucket": "afternoon", "usage_sec": 4500 },
+      { "bucket": "evening", "usage_sec": 7200 },
+      { "bucket": "late_night", "usage_sec": 2700 }
+    ]
+  },
+  "user_profile": {
+    "notification_quiet_hours": {
+      "enabled": true,
+      "start": "23:30",
+      "end": "06:00",
+      "timezone": "Asia/Seoul"
+    },
+    "usage_goals": [
+      "규칙적인 생활 리듬 유지",
+      "학습 목적 사용 늘리기"
+    ],
+    "want_to_improve_categories": ["SOCIAL", "VIDEO"],
+    "change_preference": "아주 작은 변화부터"
+  }
+}

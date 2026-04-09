@@ -23,10 +23,17 @@ SYSTEM_PROMPT = """당신은 돌핀팟 "데일리 리포트 검수자"입니다.
 1) 할루시네이션: snapshot에 없는 수치·사실을 만들지 않았는지.
    snapshot의 수치를 사람이 읽기 좋은 단위(초→분/시간, 횟수 등)로 변환하는 것은 허용된다.
    16200초를 '4시간 30분'으로 표기하는 것은 정확한 변환이므로 할루시네이션이 아니다.
-2) 톤: 비난·과도한 단정이 없는지
-3) 과잉 조언: 강제성 있는 처방이 과하지 않은지.
+2) 톤: 비난·과도한 단정이 없는지.
+   - retrieved_evidence 출처가 **임상·치료·CBT 논문**(예: cbt_ia 등)이어도, **「연구에서 이런 패턴이 다뤄진다」** 수준의 **사실 서술**만이면 비난·단정(톤 위반)으로 보지 않는다.
+   - **의학적 진단으로 보려면** 사용자에게 직접 질병·중독 등을 단정하는 문장이 있어야 한다.
+     예: '당신은 ~중독입니다', '당신은 ~진단에 해당합니다'. 연구·문헌 일반 언급만으로는 진단 위반이 아니다.
+3) 과잉 조언: **명령형·지시형 처방**만 위반으로 본다. 아래를 구분한다.
+   - 위반: 사용자에게 직접 행동을 명령·강요하는 표현
+     (예: '~하세요', '줄이세요', '해야 합니다', '꼭', '반드시', '권장합니다'가 **행동 처방**으로 쓰인 경우)
+   - 위반 아님: retrieved_evidence(전문 자료)를 반영한 **사실 서술·근거 설명**
+     (예: '전문 자료에서도 이런 패턴이 다뤄진다', '연구에서 언급된다', '문헌상 ~로 알려져 있다')
+     — 이는 조언이 아니라 expert 근거를 전달하는 서술로 본다. **임상 논문 출처**라도 위와 같은 **사실 서술 수준이면 과잉 조언이 아니다.**
    1개의 부드러운 제안은 허용된다. '~할 수 있어요', '~좋을 수 있어요' 같은 가능성 표현은 과잉 조언이 아니다.
-   '반드시', '해야 합니다', '꼭' 같은 강제성 표현이 있을 때만 위반으로 판정한다.
 4) 포맷: 마크다운 구조가 깨지지 않았는지
 5) evidence 사용: retrieved_evidence가 1개 이상이면 초안에 expert 근거가 최소 1문장 이상 자연스럽게 반영되어야 한다. 완전히 무시하면 REWRITE다.
 
@@ -56,7 +63,9 @@ GENERIC_EVIDENCE_TERMS = {
 }
 
 
-def _collect_evidence_keywords(retrieved_evidence: List[Dict[str, Any]] | None) -> List[str]:
+def _collect_evidence_keywords(
+    retrieved_evidence: Optional[List[Dict[str, Any]]],
+) -> List[str]:
     if not retrieved_evidence:
         return []
     keywords: List[str] = []
@@ -80,7 +89,9 @@ def _collect_evidence_keywords(retrieved_evidence: List[Dict[str, Any]] | None) 
     return keywords
 
 
-def _draft_mentions_evidence(report_draft: str, retrieved_evidence: List[Dict[str, Any]] | None) -> bool:
+def _draft_mentions_evidence(
+    report_draft: str, retrieved_evidence: Optional[List[Dict[str, Any]]]
+) -> bool:
     if not retrieved_evidence:
         return True
     draft_text = str(report_draft or "").lower()
@@ -91,11 +102,11 @@ def _draft_mentions_evidence(report_draft: str, retrieved_evidence: List[Dict[st
 
 def run_report_judge(
     report_draft: str,
-    snapshot: dict,
-    kpt: dict,
+    snapshot: Dict[str, Any],
+    kpt: Dict[str, Any],
     *,
-    retrieved_evidence: List[Dict[str, Any]] | None = None,
-    model: str | None = None,
+    retrieved_evidence: Optional[List[Dict[str, Any]]] = None,
+    model: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     리포트 초안을 검수합니다.
@@ -109,7 +120,7 @@ def run_report_judge(
 
     Returns:
         {
-            "verdict": "PASS" | "REWRITE" | "FALLBACK",
+            "verdict": "PASS" / "REWRITE" / "FALLBACK",
             "issues": ["..."],
             "rewrite_brief": "..."
         }

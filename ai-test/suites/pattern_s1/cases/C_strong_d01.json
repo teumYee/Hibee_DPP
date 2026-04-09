@@ -1,0 +1,33 @@
+{
+  "date": "2026-02-04",
+  "timezone": "Asia/Seoul",
+  "dashboard": {
+    "total_usage_sec": 21600,
+    "total_unlocks": 168,
+    "night_usage_sec": 7200,
+    "category_breakdown": [
+      { "category": "SHORT_FORM_VIDEO", "usage_sec": 9900, "percent": 0.4583 },
+      { "category": "SOCIAL", "usage_sec": 5400, "percent": 0.25 },
+      { "category": "VIDEO", "usage_sec": 3600, "percent": 0.1667 },
+      { "category": "EDUCATION", "usage_sec": 1800, "percent": 0.0833 },
+      { "category": "LIFESTYLE", "usage_sec": 900, "percent": 0.0417 }
+    ],
+    "time_buckets": [
+      { "bucket": "morning", "usage_sec": 1800 },
+      { "bucket": "afternoon", "usage_sec": 4500 },
+      { "bucket": "evening", "usage_sec": 7200 },
+      { "bucket": "late_night", "usage_sec": 8100 }
+    ]
+  },
+  "user_profile": {
+    "notification_quiet_hours": {
+      "enabled": false,
+      "start": "01:00",
+      "end": "08:00",
+      "timezone": "Asia/Seoul"
+    },
+    "usage_goals": ["시작 지연 줄이기", "쇼폼 줄이기"],
+    "want_to_improve_categories": ["SHORT_FORM_VIDEO", "SOCIAL"],
+    "change_preference": "아주 작은 변화부터"
+  }
+}

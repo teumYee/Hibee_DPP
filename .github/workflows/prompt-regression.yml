@@ -1,0 +1,88 @@
+name: Prompt regression (v2 >= v1)
+
+on:
+  pull_request:
+    paths:
+      - 'DPP_AI/prompts/**'
+      - 'DPP_AI/services/**'
+      - 'DPP_AI/promptfooconfig.yaml'
+      - 'DPP_AI/tests/**'
+      - 'ai-test/prompts/**'
+
+jobs:
+  promptfoo-eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install promptfoo
+        run: npm install -g promptfoo
+
+      - name: Run promptfoo eval
+        id: eval
+        working-directory: DPP_AI
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          mkdir -p .promptfoo
+          npx promptfoo eval \
+            --output .promptfoo/output.json \
+            --output .promptfoo/output.yaml \
+            --no-cache
+
+      - name: Compare v2 vs v1 (regression gate)
+        id: compare
+        working-directory: DPP_AI
+        run: |
+          export PROMPTFOO_OUTPUT=".promptfoo/output.json"
+          node scripts/compare-regression.js | tee regression-report.md
+          exit ${PIPESTATUS[0]}
+
+      - name: Comment PR with regression report
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'DPP_AI/regression-report.md';
+            let body = '';
+            if (fs.existsSync(reportPath)) {
+              body = fs.readFileSync(reportPath, 'utf8');
+            } else {
+              body = 'Eval or compare step did not produce a report.';
+            }
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.find(c => c.user.type === 'Bot' && c.body.includes('Prompt regression'));
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Upload promptfoo output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: promptfoo-output
+          path: DPP_AI/.promptfoo/
+          retention-days: 7

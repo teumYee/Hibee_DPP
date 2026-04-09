@@ -88,7 +88,7 @@ def run_report_pipeline(
         {
             "run_id": str,
             "report_markdown": str,
-            "final_verdict": "PASS" | "REWRITE" | "FALLBACK",
+            "final_verdict": "PASS" / "REWRITE" / "FALLBACK",
             "attempts": int,
             "judge_results": [...],
             "used_fallback_template": bool,

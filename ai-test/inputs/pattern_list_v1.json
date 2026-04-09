@@ -1,0 +1,49 @@
+{
+  "persona": "A",
+  "current_status": "대학생",
+
+  "notification_quiet_hours": {
+    "enabled": true,
+    "start": "01:00",
+    "end": "08:00",
+    "timezone": "Asia/Seoul"
+  },
+
+  "heavy_use_time_slots": [
+    "잠들기 전",
+    "쉬는 시간/공백 시간"
+  ],
+
+  "difficult_moments": [
+    "멈춰야 할 타이밍을 놓침",
+    "피곤할 때 자동으로 손이 감",
+    "할 일 시작 전에 '잠깐만' 보다가 길어짐",
+    "불안/지루함을 달래려고 습관적으로 확인"
+  ],
+
+  "usage_goals": [
+    "늦은 밤 사용 줄이기",
+    "자주 확인(언락/짧은 사용) 줄이기",
+    "영상/숏폼 연속 시청 줄이기",
+    "SNS 스크롤 시간을 줄이기"
+  ],
+
+  "want_to_improve_categories": [
+    "SOCIAL",
+    "GAME"
+  ],
+
+  "change_preference": "아주 작은 변화부터",
+
+  "category_vocab": {
+    "SOCIAL": "SNS/메신저",
+    "VIDEO": "영상/숏폼",
+    "GAME": "게임",
+    "EDUCATION": "교육/학습",
+    "PRODUCTIVITY": "생산성/도구",
+    "COMMUNICATION": "연락/커뮤니케이션",
+    "SHOPPING": "쇼핑",
+    "LIFESTYLE": "라이프/일상",
+    "UNCLASSIFIED": "미분류"
+  }
+}
