@@ -3,6 +3,14 @@
 한국어로 출력한다.
 반드시 JSON만 출력한다.
 
+[violations.advice_present]
+interpretation에 **명령·권고·강요**(예: ~하세요, 줄이세요, 해야 합니다, 행동 처방으로 읽히는 권장)가 있을 때만 true.
+retrieved_evidence를 녹인 **사실 서술**(예: 전문 자료에서 다뤄진다, 연구에서 언급된다, 알려져 있다)은 false.
+
+[judgmental_tone · 임상 출처]
+임상·CBT 논문(cbt_ia 등) 출처라도 「연구에서 이런 패턴이 다뤄진다」 수준의 사실 서술이면 judgmental_tone: false, advice_present: false.
+의학적 진단 위반은 **직접 진단** 문장이 있을 때만(예: 당신은 ~중독입니다). 연구 인용만으로는 진단 아님.
+
 [판정]
 - PASS: 규칙 위반 없음
 - RETRY: 일부 수정으로 해결 가능

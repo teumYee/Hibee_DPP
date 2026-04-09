@@ -1,0 +1,36 @@
+{
+  "date": "2026-01-31",
+  "timezone": "Asia/Seoul",
+  "dashboard": {
+    "total_usage_sec": 12600,
+    "total_unlocks": 44,
+    "night_usage_sec": 900,
+    "category_breakdown": [
+      { "category": "EDUCATION", "usage_sec": 5400, "percent": 0.4286 },
+      { "category": "PRODUCTIVITY", "usage_sec": 3600, "percent": 0.2857 },
+      { "category": "COMMUNICATION", "usage_sec": 1800, "percent": 0.1429 },
+      { "category": "SOCIAL", "usage_sec": 900, "percent": 0.0714 },
+      { "category": "UNCLASSIFIED", "usage_sec": 900, "percent": 0.0714 }
+    ],
+    "time_buckets": [
+      { "bucket": "morning", "usage_sec": 3600 },
+      { "bucket": "afternoon", "usage_sec": 5400 },
+      { "bucket": "evening", "usage_sec": 2700 },
+      { "bucket": "late_night", "usage_sec": 900 }
+    ]
+  },
+  "user_profile": {
+    "notification_quiet_hours": {
+      "enabled": true,
+      "start": "01:00",
+      "end": "08:00",
+      "timezone": "Asia/Seoul"
+    },
+    "usage_goals": [
+      "늦은 밤 사용 줄이기",
+      "자주 확인하는 습관 줄이기"
+    ],
+    "want_to_improve_categories": ["SOCIAL", "GAME"],
+    "change_preference": "아주 작은 변화부터"
+  }
+}

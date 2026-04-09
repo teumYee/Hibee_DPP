@@ -42,15 +42,15 @@ def _call_claude(
 
 
 def generate_report(
-    snapshot: dict,
-    user_configs: dict,
+    snapshot: Dict[str, Any],
+    user_configs: Dict[str, Any],
     selected_patterns: List[Dict[str, Any]],
-    kpt: dict,
+    kpt: Dict[str, Any],
     *,
-    retrieved_evidence: Optional[List[Any]] = None,
+    retrieved_evidence: Optional[List[Dict[str, Any]]] = None,
     rewrite_brief: Optional[str] = None,
     use_opus: bool = False,
-) -> dict:
+) -> Dict[str, Any]:
     """
     Claude로 데일리 리포트 초안을 생성합니다.
 

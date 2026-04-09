@@ -1,0 +1,7 @@
+{
+  "stage": "pattern_s1",
+  "prompt": "prompts/pattern_list_v1.txt",
+  "model": "gpt-5.2",
+  "temp": 0.4,
+  "maxTokens": 900
+}

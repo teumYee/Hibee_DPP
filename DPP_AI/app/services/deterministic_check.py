@@ -5,7 +5,7 @@ deterministic_check.py — JSON 스키마/수치/금지어 검증 (체크인 후
 """
 import re
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 logger = logging.getLogger("dpp_ai")
 
@@ -19,6 +19,10 @@ BANNED_SEC = re.compile(
 ADVICE_LIKE = re.compile(
     r"(해야\s*해|해야\s*함|해보세요|권장|추천|줄이세요|늘리세요|해결|습관을\s*바꿔|~하도록)"
 )
+CLINICAL_LANGUAGE = re.compile(
+    r"(중독(?:자|적(?:인)?)?|의존성|의존|진단|치료|인지행동치료|CBT|addiction|addictive|dependency|dependence|diagnosis|diagnostic|treatment|therapy|clinical)",
+    re.IGNORECASE,
+)
 
 # candidate_id 형식: c1 ~ c5
 CANDIDATE_ID_PATTERN = re.compile(r"^c[1-5]$")
@@ -30,6 +34,7 @@ def run_deterministic_check(output: Dict[str, Any]) -> Dict[str, Any]:
 
     - 기본 구조: date(string), pattern_candidates(array, 최대 5개)
     - 각 후보: candidate_id(c1~c5), label/observation/interpretation 필수, 초 표기 금지, 조언형 표현 금지
+      observation/interpretation에는 임상·치료 용어 직접 노출 금지
     - evidence.metrics_used, evidence.numbers 배열 필수
     - tags 배열 2~4개
     - label 중복 금지
@@ -55,7 +60,7 @@ def run_deterministic_check(output: Dict[str, Any]) -> Dict[str, Any]:
 
     # 후보 배열이 없거나 형식 오류면 루프 생략
     candidates = out.get("pattern_candidates") if isinstance(out.get("pattern_candidates"), list) else []
-    seen_labels: set[str] = set()
+    seen_labels: Set[str] = set()
 
     for c in candidates:
         if not isinstance(c, dict):
@@ -75,6 +80,8 @@ def run_deterministic_check(output: Dict[str, Any]) -> Dict[str, Any]:
                     errors.append(f"seconds mentioned in {key} ({cid})")
                 if key in ("observation", "interpretation") and ADVICE_LIKE.search(val):
                     errors.append(f"advice-like language detected ({cid})")
+                if key in ("observation", "interpretation") and CLINICAL_LANGUAGE.search(val):
+                    errors.append(f"clinical language detected in {key} ({cid})")
 
         ev = c.get("evidence")
         if not ev or not isinstance(ev, dict):

@@ -8,7 +8,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 # HTTP 테스트 시 create_app()에서 필요. 없으면 상위 ai-test 또는 현재 디렉터리 사용
 if not os.getenv("AI_TEST_ROOT"):

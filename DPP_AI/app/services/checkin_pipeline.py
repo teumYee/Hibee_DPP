@@ -90,9 +90,9 @@ def run_checkin_pipeline(
         {
             "run_id": str,
             "writer_output": {...},
-            "deterministic_result": {"passed": bool, "errors": [...]} | None,
-            "judge_result": {"verdict": "PASS"|"RETRY"|"FAIL", "reason": ...} | None,
-            "final_verdict": "PASS"|"RETRY"|"FAIL",
+            "deterministic_result": {"passed": bool, "errors": [...]} 또는 None,
+            "judge_result": {"verdict": "PASS"/"RETRY"/"FAIL", "reason": ...} 또는 None,
+            "final_verdict": "PASS" / "RETRY" / "FAIL",
             "attempts": int,
             "judge_results": [...],
         }
