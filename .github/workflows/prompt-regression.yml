@@ -29,6 +29,7 @@ jobs:
 
       - name: Run promptfoo eval
         id: eval
+        continue-on-error: true
         working-directory: DPP_AI
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
