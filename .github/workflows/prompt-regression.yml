@@ -35,9 +35,7 @@ jobs:
         run: |
           mkdir -p .promptfoo
           npx promptfoo eval \
-            --output .promptfoo/results.json \
             --output .promptfoo/output.json \
-            --output .promptfoo/output.yaml \
             --no-cache
 
       - name: Compare v2 vs v1 (regression gate)
