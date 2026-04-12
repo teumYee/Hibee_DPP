@@ -13,7 +13,7 @@ logger = logging.getLogger("dpp_ai")
 
 MAX_ATTEMPTS = 3
 _QA_RESULTS_DISABLED = False
-FALLBACK_TEMPLATE = """# 오늘의 요약
+FALLBACK_TEMPLATE = """오늘의 요약
 
 데일리 리포트를 생성하지 못했습니다.
 오늘 선택하신 패턴과 기록을 바탕으로, 앱 내 요약 화면을 확인해 주세요.

@@ -1,8 +1,9 @@
 import json
 import os
+import re
 from collections import Counter, defaultdict
 from datetime import date, timedelta
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import requests
 from sqlalchemy import desc, func
@@ -44,6 +45,30 @@ def _safe_json_loads(text: str, default: Dict[str, Any]) -> Dict[str, Any]:
         return json.loads(text)
     except Exception:
         return default
+
+
+def format_duration_korean(total_sec: Union[int, float]) -> str:
+    """
+    초 단위 길이를 한국어로 표기합니다.
+    1시간 이상이면 시간, 1분 이상이면 분, 남은 초는 0이 아닐 때만 초로 붙입니다.
+    """
+    try:
+        s = int(total_sec)
+    except (TypeError, ValueError):
+        s = 0
+    s = max(0, s)
+    if s == 0:
+        return "0초"
+    h, rem = divmod(s, 3600)
+    m, sec = divmod(rem, 60)
+    parts: List[str] = []
+    if h:
+        parts.append(f"{h}시간")
+    if m:
+        parts.append(f"{m}분")
+    if sec:
+        parts.append(f"{sec}초")
+    return " ".join(parts) if parts else "0초"
 
 
 def _call_openai_chat(model: str, system_prompt: str, user_prompt: str, temperature: float = 0.2) -> str:
@@ -270,16 +295,20 @@ def run_rag_agent(
     }
 
 def _fallback_report_markdown(snapshot: Daily_SnapShots, checkin: CheckIn) -> str:
+    total_u = snapshot.total_usage_check or 0
+    max_c = snapshot.max_continuous_sec or 0
     return (
-        "# 데일리 리포트\n\n"
-        f"- 총 사용 지표: {snapshot.total_usage_check}\n"
-        f"- 잠금 해제 횟수: {snapshot.unlock_count}\n"
-        f"- 최장 연속 사용(초): {snapshot.max_continuous_sec}\n\n"
-        f"## KPT 요약\n- Keep: {checkin.kpt_keep or '기록 없음'}\n"
-        f"- Problem: {checkin.kpt_problem or '기록 없음'}\n"
-        f"- Try: {checkin.kpt_try or '기록 없음'}\n\n"
-        "## 오늘의 제안\n- 다음 사용 세션 시작 전에 목표를 1줄로 적어보세요.\n"
-        "- 연속 사용이 길어질 때는 3분 휴식을 먼저 넣어보세요.\n"
+        "데일리 리포트\n\n"
+        f"총 사용 시간: {format_duration_korean(total_u)}\n"
+        f"잠금 해제 횟수: {snapshot.unlock_count or 0}회\n"
+        f"최장 연속 사용: {format_duration_korean(max_c)}\n\n"
+        "KPT 요약\n"
+        f"Keep: {checkin.kpt_keep or '기록 없음'}\n"
+        f"Problem: {checkin.kpt_problem or '기록 없음'}\n"
+        f"Try: {checkin.kpt_try or '기록 없음'}\n\n"
+        "오늘의 제안\n"
+        "다음 사용 세션 시작 전에 목표를 1줄로 적어보세요.\n"
+        "연속 사용이 길어질 때는 3분 휴식을 먼저 넣어보세요.\n"
     )
 
 
@@ -453,6 +482,29 @@ def _aggregate_weekly_category_usage(snapshots: List[Daily_SnapShots]) -> List[D
     return ranked
 
 
+# 읽기 쉬운 시간 뒤에 붙는 원본 초 병기 제거: "44분(2,675초)" → "44분"
+_PAREN_RAW_SECONDS_KO = re.compile(
+    r"\(\s*[0-9][0-9,\u202f\u00a0\s，]*\s*초\s*\)",
+)
+
+
+def _strip_parenthetical_raw_seconds(text: str) -> str:
+    return _PAREN_RAW_SECONDS_KO.sub("", text)
+
+
+def _strip_inline_markdown_segment(text: str) -> str:
+    """앱에서 마크다운이 렌더되지 않으므로 **, *, `, 링크 표기 등을 제거합니다."""
+    line = text
+    line = re.sub(r"```[^`]*```", "", line, flags=re.DOTALL)
+    line = re.sub(r"`+([^`]+)`+", r"\1", line)
+    line = re.sub(r"\*\*(.+?)\*\*", r"\1", line)
+    line = re.sub(r"__(.+?)__", r"\1", line)
+    line = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"\1", line)
+    line = re.sub(r"(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", r"\1", line)
+    line = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", line)
+    return line
+
+
 def _markdown_to_plain_text(markdown: str | None) -> str | None:
     if not markdown:
         return None
@@ -465,6 +517,10 @@ def _markdown_to_plain_text(markdown: str | None) -> str | None:
         line = line.lstrip("#").strip()
         if line.startswith("- "):
             line = line[2:].strip()
+        elif re.match(r"^\d+\.\s+", line):
+            line = re.sub(r"^\d+\.\s+", "", line).strip()
+        line = _strip_inline_markdown_segment(line)
+        line = _strip_parenthetical_raw_seconds(line).strip()
         plain_lines.append(line)
 
     return "\n".join(plain_lines) if plain_lines else None
@@ -487,10 +543,12 @@ def build_daily_report_response_payload(
         if isinstance(pattern, dict) and (pattern.get("title") or pattern.get("label"))
     ]
 
+    total_u = snapshot.total_usage_check or 0
+    max_c = snapshot.max_continuous_sec or 0
     summary = (
-        f"{target_date.isoformat()} 기준 총 사용 지표는 {snapshot.total_usage_check or 0}, "
-        f"잠금 해제는 {snapshot.unlock_count or 0}회이며 "
-        f"최장 연속 사용은 {snapshot.max_continuous_sec or 0}초였습니다."
+        f"{target_date.isoformat()} 기준 총 사용 시간은 {format_duration_korean(total_u)}이며, "
+        f"잠금 해제는 {snapshot.unlock_count or 0}회, "
+        f"최장 연속 사용은 {format_duration_korean(max_c)}이었습니다."
     )
 
     highlights = [
@@ -735,7 +793,8 @@ def build_weekly_report_response_payload(
     better_day = report_source.get("better_day") or "데이터 없음"
     try_area = report_source.get("try_area") or "작은 습관 하나를 꾸준히 유지해 보세요."
     summary = report_source.get("analysis") or (
-        f"이번 주 총 사용 지표는 {total_usage}, 평균 사용 지표는 {avg_daily_usage}, "
+        f"이번 주 총 사용 시간은 {format_duration_korean(total_usage)}, "
+        f"일평균 총 사용 시간은 {format_duration_korean(avg_daily_usage)}, "
         f"완료 체크인은 {checkin_count}회입니다."
     )
 
@@ -847,9 +906,9 @@ def build_weekly_report(
     analysis = (
         f"이번 주에는 {daily_report_days}일의 데일리 리포트와 {tracked_days}일의 스냅샷, "
         f"{checkin_count}회의 완료 체크인이 기록되었습니다. "
-        f"일평균 사용 지표는 {avg_usage}, 일평균 잠금 해제 수는 {avg_unlocks}였고 "
+        f"일평균 총 사용 시간은 {format_duration_korean(avg_usage)}, 일평균 잠금 해제 수는 {avg_unlocks}회였고 "
         f"가장 두드러진 활동 시간대는 {main_activity_time}였습니다. "
-        f"최장 연속 사용은 {max_continuous}초, 전체 앱 실행 수는 {total_launches}회였습니다."
+        f"최장 연속 사용은 {format_duration_korean(max_continuous)}, 전체 앱 실행 수는 {total_launches}회였습니다."
     )
     if better_day:
         analysis += f" 비교적 안정적이었던 날은 {better_day}입니다."
